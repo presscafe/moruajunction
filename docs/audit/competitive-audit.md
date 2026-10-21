@@ -1,5 +1,21 @@
 # Morua Junction — Deep Competitive Audit
 
+> **This is the audit as it was written on 18 October 2026 — a record of the
+> analysis, not the specification.** Three of its recommendations were later
+> overturned by the founder, and the scope widened from Gaborone to the whole
+> country. Where this document and the product disagree, the product wins:
+>
+> | This audit said | The product does |
+> |---|---|
+> | The admin must never reprice (C-2) | The admin sets a declared 0–25 % markup on a shop's own price — clamped, audited, and the seller is told |
+> | One contracted delivery partner, no auction (C-4) | The admin chooses the provider for each order from five registered providers |
+> | Risk-based approval, not a liquidity tax (C-3) | Every shop manager is approved by an admin before it can trade |
+> | Pilot in one area, two categories (C-7) | 40 towns, every district, 138 shops, 2,919 products |
+> | A TypeScript monolith (H-7) | One Rust service is the only backend; TypeScript is the dataset toolkit and the storefront |
+>
+> See [the product specification](../product-spec.md) §4 for the decisions as
+> ratified, and the [README](../../README.md) for what actually ships.
+
 **Subject:** Morua Junction (virtual mall for Gaborone retailers, with registered delivery providers)
 **Repository:** `presscafe/moruajunction` @ `6bc30ab`
 **Audit date:** 18 October 2026

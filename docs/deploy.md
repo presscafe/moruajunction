@@ -174,7 +174,26 @@ every push to the working branch. Two ways to get it:
 
 ---
 
-## 6. Checklist before you go live
+## 6. What CI does for you
+
+Every push to an `arena/**` branch runs two jobs.
+
+**Rust service** — compiles the toolchain, runs the unit tests, builds the
+release binary, then boots it against a throwaway database and runs the API
+contract check against it: every endpoint the storefront calls, every field
+and its type, and an order from the basket through to delivery with the
+ledger balancing to zero. The binary, the logs and `Cargo.lock` are then
+published to the `ci/diagnostics` branch.
+
+**Storefront** — installs the dependencies, typechecks, builds the bundle,
+checks the cache policy, checks that the committed catalogue still matches the
+TypeScript toolkit, and checks that every PWA asset made it into the bundle.
+
+A green run on both means the service and the storefront agree.
+
+---
+
+## 7. Checklist before you go live
 
 - [ ] `MORUA_DB` points at a persistent volume, not a container-local path.
 - [ ] `/health` returns `{"status":"ok"}` from the public URL.

@@ -169,6 +169,28 @@ Rebuilding the dataset after editing the catalogue:
 npm run dataset    # re-seeds and writes rust/seed/morua.json
 ```
 
+### The checks
+
+Four checks stand between a change and the people who use it. All four run
+in CI on every push.
+
+| Check | What it proves |
+|---|---|
+| `cargo test` | The pricing engines and the seeding hold — including that every product still lands in the shop that sells it. |
+| `npm run contract` | The storefront and the API still agree. It calls every endpoint the storefront calls, checks each field and its type, and runs an order from the basket to delivery. **84 checks.** |
+| `npm run check:cache` | The two cache policies — the API client's and the service worker's — agree, and neither keeps the admin console, the seller console, orders or the ledger on the device. |
+| `npm run check:dataset` | The committed catalogue is what the TypeScript toolkit produces, so the binary and the toolkit cannot drift apart. |
+
+Run them all locally:
+
+```bash
+npm run check              # typecheck, cache policy, dataset drift
+npm run contract:local     # against a service running on :8787
+```
+
+The contract check approves a shop and sets a markup on it, so point it at a
+service you are happy to change — CI runs it against a throwaway database.
+
 Point the storefront at a hosted API with `VITE_API_BASE`:
 
 ```bash
