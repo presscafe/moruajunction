@@ -1,8 +1,11 @@
-//! Morua Junction — Gaborone's virtual mall.
+//! Morua Junction — Botswana's virtual mall.
 //!
 //! A Rust API service for a multi-vendor marketplace: shop managers run their
 //! own shops, the mall admin approves them, sets the markup on their prices
 //! and chooses which delivery provider carries each order.
+//!
+//! The service is stateless apart from one SQLite file, so it runs on a free
+//! container platform as happily as on a laptop.
 
 mod api;
 mod db;
@@ -15,8 +18,11 @@ mod timeutil;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
+use axum::routing::get;
+use axum::Json;
 use axum::Router;
 use rusqlite::Connection;
+use serde_json::json;
 
 use api::AppState;
 
@@ -36,7 +42,9 @@ async fn main() {
         db: Arc::new(Mutex::new(conn)),
     });
 
-    let app: Router = api::router().with_state(state);
+    let app: Router<Arc<AppState>> = Router::new()
+        .route("/health", get(health))
+        .nest("/api", api::router());
 
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -44,9 +52,18 @@ async fn main() {
         .unwrap_or(8787);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("bind");
+    let listener = tokio::net::TcpListener::bind(addr).await.expect("bind");
     println!("Morua Junction (Rust) listening on http://0.0.0.0:{port}");
-    axum::serve(listener, app).await.expect("serve");
+    axum::serve(listener, app.with_state(state))
+        .await
+        .expect("serve");
+}
+
+/// A plain liveness probe for free hosting platforms.
+async fn health() -> Json<serde_json::Value> {
+    Json(json!({
+        "status": "ok",
+        "service": "morua-junction",
+        "version": env!("CARGO_PKG_VERSION"),
+    }))
 }
