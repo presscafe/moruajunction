@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches:
-      - arena/1f00941f-moruajunction
+      - 'arena/**'
   pull_request:
   workflow_dispatch:
 
