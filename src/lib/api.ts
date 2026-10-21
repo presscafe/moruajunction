@@ -226,6 +226,7 @@ export interface QuoteLine {
   commission: number
   sellerNet: number
   stock: number
+  tradeable: boolean
   store: Store
   landed: Landed
 }

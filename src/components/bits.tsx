@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useCart } from '../App'
 import type { Band, Landed, Product, Store } from '../lib/api'
 import { minutes, pula, pulaShort } from '../lib/format'
 
@@ -72,6 +74,16 @@ export function StoreCard({ store }: { store: Store }) {
 export function ProductCard({ product, store }: { product: Product; store?: Store }) {
   const sellable = product.stock > 0
   const special = product.is_special && product.special_pula
+  const { add } = useCart()
+  const [added, setAdded] = useState(false)
+  function quickAdd(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!sellable) return
+    add(product.id, 1)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1400)
+  }
   return (
     <Link to={`/product/${product.id}`} className="product-card">
       <div
@@ -81,6 +93,15 @@ export function ProductCard({ product, store }: { product: Product; store?: Stor
         <span>{product.icon}</span>
         {special ? <span className="ribbon">Special · {pula(special)}</span> : null}
         {!sellable ? <span className="ribbon">Out of stock</span> : null}
+        {sellable && (
+          <button
+            className={`quick-add${added ? ' done' : ''}`}
+            onClick={quickAdd}
+            aria-label={`Add ${product.name} to the basket`}
+          >
+            {added ? '✓' : '+'}
+          </button>
+        )}
       </div>
       <div className="product-body">
         <span className="product-name">{product.name}</span>

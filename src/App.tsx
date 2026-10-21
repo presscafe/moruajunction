@@ -12,6 +12,7 @@ import Checkout from './pages/Checkout'
 import OrderPage from './pages/OrderPage'
 import Seller from './pages/Seller'
 import Admin from './pages/Admin'
+import NotFound from './pages/NotFound'
 import { api } from './lib/api'
 import type { Quote } from './lib/api'
 
@@ -190,7 +191,7 @@ export default function App() {
           <Route path="/order/:code" element={<OrderPage />} />
           <Route path="/seller/:slug" element={<Seller />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<Concourse />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Shell>
     </CartContext.Provider>

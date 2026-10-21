@@ -700,6 +700,7 @@ struct QuoteLine {
     seller_net: f64,
     markup: f64,
     landed: Value,
+    tradeable: bool,
 }
 
 fn build_quote(
@@ -736,6 +737,13 @@ fn build_quote(
             );
             let base = product.get("price_pula").and_then(|v| v.as_f64()).unwrap_or(0.0);
             let markup_pct = store.get("markup_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            // A shop waiting on the admin approval queue may be browsed but
+            // may not trade.
+            let tradeable = store
+                .get("approval_status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("approved")
+                == "approved";
             let payable_unit = marked_price(base, markup_pct);
             let line_total = round2(payable_unit * qty as f64);
             let base_total = round2(base * qty as f64);
@@ -750,6 +758,7 @@ fn build_quote(
             out.push(QuoteLine {
                 product,
                 store,
+                tradeable,
                 qty,
                 unit_price: base,
                 payable_unit,
@@ -809,6 +818,7 @@ fn build_quote(
                 "commission": l.commission,
                 "sellerNet": l.seller_net,
                 "stock": l.product.get("stock").and_then(|v| v.as_i64()).unwrap_or(0),
+                "tradeable": l.tradeable,
                 "store": l.store,
                 "landed": l.landed,
             })
@@ -875,6 +885,14 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         return Json(json!({"error": "Your basket is empty."}));
     }
     for l in &quote_lines {
+        if !l.tradeable {
+            let name = l.store.get("name").and_then(|v| v.as_str()).unwrap_or("A shop");
+            return Json(json!({
+                "error": format!(
+                    "{name} is still waiting for the Junction admin to approve it, so it cannot take orders yet."
+                )
+            }));
+        }
         let stock = l.product.get("stock").and_then(|v| v.as_i64()).unwrap_or(0);
         if stock < l.qty {
             let name = l.product.get("name").and_then(|v| v.as_str()).unwrap_or("item");

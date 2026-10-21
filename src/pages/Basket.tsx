@@ -67,6 +67,12 @@ export default function Basket() {
                       <span className="gold"> · includes a P{line.markupPula.toFixed(2)} mall levy</span>
                     )}
                   </div>
+                  {line.tradeable === false && (
+                    <div className="tiny" style={{ color: 'var(--gold)', marginTop: '0.35rem' }}>
+                      ⏳ This shop is waiting for the Junction admin to approve it, so it cannot take
+                      orders yet.
+                    </div>
+                  )}
                   <div className="row gap-s" style={{ marginTop: '0.6rem' }}>
                     <div className="row gap-s">
                       <button
