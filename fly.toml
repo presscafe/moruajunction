@@ -1,0 +1,41 @@
+# Fly.io — the Rust API service.
+#
+# Fly gives every account a small free allowance, which is enough for the
+# mall's API. The SQLite database lives on a volume so the ledger survives
+# a restart.
+
+app = "morua-junction"
+primary_region = "jnb"   # Johannesburg — closest Fly region to Gaborone
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  MORUA_DB = "/data/morua.db"
+  PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 50
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/health"
+
+[[mounts]]
+  source = "morua_data"
+  destination = "/data"
+
+[volumes]
+  [volumes.morua_data]

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Morua Junction — Gaborone's virtual mall. A virtual alternative to the city's physical shops.",
+  "description": "Morua Junction \u2014 Gaborone's virtual mall. A virtual alternative to the city's physical shops.",
   "scripts": {
     "dev": "concurrently -n api,web -c magenta,cyan \"tsx watch server/index.ts\" \"vite\"",
     "dev:api": "tsx watch server/index.ts",
@@ -11,7 +11,8 @@
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.mjs",
     "start": "node dist/server.mjs",
     "seed": "tsx server/seed-cli.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "vite build"
   },
   "dependencies": {
     "express": "^4.21.2",

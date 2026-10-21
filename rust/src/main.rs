@@ -28,6 +28,25 @@ use api::AppState;
 
 #[tokio::main]
 async fn main() {
+    // `morua --health` is a liveness probe for container platforms: it opens
+    // the database and reports the state without starting a listener.
+    if std::env::args().any(|a| a == "--health") {
+        let db_path = std::env::var("MORUA_DB").unwrap_or_else(|_| "data/morua.db".to_string());
+        match Connection::open(&db_path) {
+            Ok(conn) => {
+                let count: i64 = conn
+                    .query_row("SELECT COUNT(*) FROM stores", [], |r| r.get(0))
+                    .unwrap_or(0);
+                println!("ok — {count} shops in the mall");
+            }
+            Err(e) => {
+                eprintln!("unhealthy: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     let db_path = std::env::var("MORUA_DB").unwrap_or_else(|_| "data/morua.db".to_string());
     if let Some(parent) = std::path::Path::new(&db_path).parent() {
         if !parent.as_os_str().is_empty() {

@@ -1,0 +1,23 @@
+# Render — the Rust API service on the free tier.
+#
+# Render's free web services sleep after inactivity and spin back up on the
+# next request, which is fine for the mall: the database lives on a disk that
+# persists between restarts.
+
+services:
+  - type: web
+    name: morua-junction-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: MORUA_DB
+        value: /data/morua.db
+      - key: PORT
+        value: 8787
+    disk:
+      name: morua-data
+      mountPath: /data
+      sizeGB: 1

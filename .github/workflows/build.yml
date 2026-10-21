@@ -57,6 +57,7 @@ jobs:
           cp cargo-test.log ../diagnostics/cargo-test.txt 2>/dev/null || true
           cp cargo-build.log ../diagnostics/cargo-build.txt 2>/dev/null || true
           cp target/release/morua ../diagnostics/morua-linux 2>/dev/null || true
+          cp Cargo.lock ../diagnostics/Cargo.lock 2>/dev/null || true
           cd ..
           git config user.name "morua-ci"
           git config user.email "morua-ci@users.noreply.github.com"
