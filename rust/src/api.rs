@@ -669,6 +669,12 @@ async fn walk(
     Json(json!({"from": out}))
 }
 
+/// Every delivery zone the Junction serves, for the area picker.
+async fn areas(State(_state): S) -> Json<Value> {
+    let list: Vec<&str> = crate::pricing::ZONES.iter().map(|(name, _)| *name).collect();
+    Json(json!({"areas": list}))
+}
+
 async fn providers(State(state): S) -> Json<Value> {
     let conn = state.db.lock().unwrap();
     let list = rows(
