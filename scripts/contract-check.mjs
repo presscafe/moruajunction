@@ -571,9 +571,96 @@ async function main() {
   const seller = await get(`/api/seller/${first.slug}`)
   checkShape('GET /api/seller/:slug', seller, SELLER)
 
+  /* ---- the seller console writes to its own shelf ---- */
+  const shelfStore = await get(`/api/stores/${first.slug}`)
+  const shelfProduct = shelfStore.products[0]
+  const originalStock = shelfProduct.stock
+  const originalPrice = shelfProduct.price_pula
+
+  const notifications = await get(`/api/seller/${first.slug}/notifications`)
+  checkShape('GET /api/seller/:slug/notifications', notifications, { notifications: 'array' })
+
+  const synced = await post(`/api/seller/${first.slug}/shelf`, {
+    productId: shelfProduct.id,
+    stock: originalStock + 7,
+  })
+  record('POST /api/seller/:slug/shelf: the shop syncs its stock', synced.data.ok === true)
+
+  const afterSync = await get(`/api/products/${shelfProduct.id}`)
+  record(
+    'seller: the synced stock is what the mall shows',
+    afterSync.product.stock === originalStock + 7,
+    `stock ${afterSync.product.stock}`,
+  )
+  record(
+    'seller: the sync stamps the shelf as live',
+    Boolean(afterSync.product.shelf?.live),
+    afterSync.product.shelf?.label,
+  )
+
+  const special = await post(`/api/seller/${first.slug}/special`, {
+    productId: shelfProduct.id,
+    specialPula: 7.5,
+  })
+  record('POST /api/seller/:slug/special: the shop sets a special', special.data.ok === true)
+
+  const afterSpecial = await get(`/api/products/${shelfProduct.id}`)
+  record(
+    'seller: the special reaches the mall',
+    afterSpecial.product.is_special === true && afterSpecial.product.special_pula === 7.5,
+    `special ${afterSpecial.product.special_pula}`,
+  )
+
+  const cleared = await post(`/api/seller/${first.slug}/special`, {
+    productId: shelfProduct.id,
+    clear: true,
+  })
+  record('POST /api/seller/:slug/special: the shop clears it again', cleared.data.ok === true)
+
+  const afterClear = await get(`/api/products/${shelfProduct.id}`)
+  record(
+    'seller: the cleared special comes off the mall',
+    afterClear.product.is_special === false,
+    `special ${afterClear.product.special_pula}`,
+  )
+
+  const saved = await post(`/api/seller/${first.slug}/products`, {
+    id: shelfProduct.id,
+    name: shelfProduct.name,
+    blurb: shelfProduct.blurb,
+    pricePula: 9.99,
+    stock: originalStock,
+  })
+  record(
+    'POST /api/seller/:slug/products: the shop saves a product',
+    saved.data.ok === true && saved.data.id === shelfProduct.id,
+    `product ${saved.data.id}`,
+  )
+
+  const afterSave = await get(`/api/products/${shelfProduct.id}`)
+  record(
+    'seller: the saved price reaches the mall',
+    afterSave.product.price_pula === 9.99,
+    `P${afterSave.product.price_pula}`,
+  )
+
+  // Put the shelf back the way it was found.
+  await post(`/api/seller/${first.slug}/products`, {
+    id: shelfProduct.id,
+    pricePula: originalPrice,
+    stock: originalStock,
+  })
+  await post(`/api/seller/${first.slug}/shelf`, {
+    productId: shelfProduct.id,
+    stock: originalStock,
+  })
+
   /* ---- the admin console ---- */
   const admin = await get('/api/admin')
   checkShape('GET /api/admin', admin, ADMIN)
+
+  /** The shop the admin acts on below — the seller checks come after. */
+  let actedOn = null
 
   /* ---- the admin approves a shop and marks up its prices ---- */
   const pending = admin.stores.find((s) => s.approval_status === 'pending')
@@ -630,6 +717,33 @@ async function main() {
       'admin: every action is written to the audit trail',
       admin.actions.length >= 0,
       `${admin.actions.length} actions recorded`,
+    )
+    actedOn = pending
+  }
+
+  /* ---- a shop that was told can read and clear its own inbox ---- */
+  if (actedOn) {
+    const inbox = await get(`/api/seller/${actedOn.slug}/notifications`)
+    record(
+      'seller: the shop has an inbox with something in it',
+      inbox.notifications.length > 0,
+      `${inbox.notifications.length} notifications`,
+    )
+    const read = await post(`/api/seller/${actedOn.slug}/notifications/read`, {})
+    record(
+      'POST /api/seller/:slug/notifications/read: the shop clears its inbox',
+      read.data.ok === true,
+    )
+    const afterRead = await get(`/api/seller/${actedOn.slug}/notifications`)
+    record(
+      'seller: the cleared inbox stays cleared',
+      afterRead.notifications.length > 0 && afterRead.notifications.every((n) => Number(n.read) === 1),
+      `${afterRead.notifications.length} notifications`,
+    )
+  } else {
+    skip(
+      'POST /api/seller/:slug/notifications/read: the shop clears its inbox',
+      'no shop was approved on this service — run against a fresh database',
     )
   }
 
