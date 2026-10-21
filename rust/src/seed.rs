@@ -293,17 +293,19 @@ mod tests {
             .unwrap_or(0);
         assert_eq!(stranded, 0, "every shop must stand in a real aisle");
 
-        // The aisle codes are the ones the dataset declares.
-        let code: String = conn
+        // The aisle is the one the dataset declares: a fresh market stands
+        // in Fresh Produce, not in Groceries.
+        let (code, name): (String, String) = conn
             .query_row(
-                "SELECT a.code FROM products p
+                "SELECT a.code, a.name FROM products p
                  JOIN stores s ON s.id = p.store_id
                  JOIN aisles a ON a.id = s.aisle_id
                  WHERE p.id = 1",
                 [],
-                |r| r.get(0),
+                |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .expect("product 1 stands in an aisle");
-        assert_eq!(code, "A1");
+        assert_eq!(code, "A2");
+        assert_eq!(name, "Fresh Produce");
     }
 }
