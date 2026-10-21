@@ -1,0 +1,35 @@
+/*
+  Cloudflare Pages — the storefront.
+  Build:  npm run build:web
+  Output: dist/public
+*/
+name = "morua-junction"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist/public"
+
+# The storefront is a static PWA; every route falls back to the shell so the
+# router works on a hard refresh and offline.
+[[headers]]
+for = "/assets/*"
+[headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/sw.js"
+[headers.values]
+  Cache-Control = "public, max-age=0, must-revalidate"
+  Service-Worker-Allowed = "/"
+
+[[headers]]
+for = "/manifest.webmanifest"
+[headers.values]
+  Content-Type = "application/manifest+json"
+  Cache-Control = "public, max-age=3600"
+
+# API routes are proxied to the Rust service. Point VITE_API_BASE at the same
+# host if you prefer, but the proxy keeps the app same-origin and avoids CORS.
+[[rules]]
+type = "404"
+globs = ["**"]
+status = 200
+html = "./dist/public/index.html"

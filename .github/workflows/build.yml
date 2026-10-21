@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches:
+      - arena/1f00941f-moruajunction
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rust:
+    name: Rust service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+
+      - name: Test
+        run: |
+          set +e
+          cargo test 2>&1 | tee cargo-test.log
+          status=${PIPESTATUS[0]}
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Build release binary
+        run: |
+          set +e
+          cargo build --release 2>&1 | tee cargo-build.log
+          status=${PIPESTATUS[0]}
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Publish the binary and diagnostics
+        if: always()
+        run: |
+          mkdir -p ../diagnostics
+          cp cargo-test.log ../diagnostics/cargo-test.txt 2>/dev/null || true
+          cp cargo-build.log ../diagnostics/cargo-build.txt 2>/dev/null || true
+          cp target/release/morua ../diagnostics/morua-linux 2>/dev/null || true
+          cp Cargo.lock ../diagnostics/Cargo.lock 2>/dev/null || true
+          cd ..
+          git config user.name "morua-ci"
+          git config user.email "morua-ci@users.noreply.github.com"
+          git checkout -B ci/diagnostics
+          git add -f diagnostics || true
+          git commit -m "build output" || true
+          git push origin ci/diagnostics --force || true
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: morua-linux
+          path: rust/target/release/morua
+          if-no-files-found: error
