@@ -1,0 +1,39 @@
+{
+  "name": "Morua Junction — Botswana's virtual mall",
+  "short_name": "Morua",
+  "description": "Every product on Morua Junction is already in Botswana. Buy from verified shops in your own town, pay with Orange Money or cash, collect or get it delivered.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1522",
+  "theme_color": "#0b1522",
+  "categories": ["shopping", "business", "food"],
+  "lang": "en-BW",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Mall Map", "short_name": "Map", "url": "/map" },
+    { "name": "My basket", "short_name": "Basket", "url": "/basket" },
+    { "name": "All shops", "short_name": "Shops", "url": "/shop" }
+  ]
+}

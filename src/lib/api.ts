@@ -17,8 +17,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  get: <T,>(path: string) => request<T>(path),
-  post: <T,>(path: string, body?: unknown) =>
+  get: <T = any,>(path: string) => request<T>(path),
+  post: <T = any,>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) }),
 }
 
@@ -46,7 +46,7 @@ export interface Store {
   review_count: number
   fulfilment_accuracy: number
   median_prep_minutes: number
-  tags: string[]
+  tags: string[] | string
   staff: { name: string; role: string }[]
   sections: { title: string; kind: string }[]
   card_stamps: number
@@ -54,6 +54,9 @@ export interface Store {
   unit_label: string
   unit_x: number
   unit_y: number
+  town: string
+  district: string
+  region: string
   opened_on: string
   approval_status: string
   approval_note: string
@@ -127,6 +130,7 @@ export interface Floor {
   code: string
   name: string
   tagline: string
+  town?: string
   sort: number
 }
 
@@ -155,7 +159,7 @@ export interface Mall {
 }
 
 export interface MallPlan {
-  floors: Floor[]
+  floors: (Floor & { town?: string })[]
   aisles: Aisle[]
   units: {
     id: number
@@ -164,12 +168,17 @@ export interface MallPlan {
     icon: string
     accent: string
     area: string
+    town: string
+    floorId: number
+    kind: string
+    approval: string
     unitLabel: string
     x: number
     y: number
     aisle: string
     minutesFromHub: number
   }[]
+  hubs: { floorId: number; x: number; y: number; label: string }[]
   hub: { x: number; y: number; label: string }
 }
 

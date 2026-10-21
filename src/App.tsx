@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Shell from './components/Shell'
 import Concourse from './pages/Concourse'
+import Directory from './pages/Directory'
 import MallMap from './pages/MallMap'
 import Aisle from './pages/Aisle'
 import Storefront from './pages/Storefront'
@@ -180,6 +181,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Concourse />} />
           <Route path="/map" element={<MallMap />} />
+          <Route path="/shop" element={<Directory />} />
           <Route path="/aisle/:code" element={<Aisle />} />
           <Route path="/store/:slug" element={<Storefront />} />
           <Route path="/product/:id" element={<ProductPage />} />

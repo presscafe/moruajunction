@@ -50,18 +50,19 @@ jobs:
           echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
-      - name: Publish diagnostics
-        if: failure()
+      - name: Publish the binary and diagnostics
+        if: always()
         run: |
           mkdir -p ../diagnostics
           cp cargo-test.log ../diagnostics/cargo-test.txt 2>/dev/null || true
           cp cargo-build.log ../diagnostics/cargo-build.txt 2>/dev/null || true
+          cp target/release/morua ../diagnostics/morua-linux 2>/dev/null || true
           cd ..
           git config user.name "morua-ci"
           git config user.email "morua-ci@users.noreply.github.com"
           git checkout -B ci/diagnostics
           git add -f diagnostics || true
-          git commit -m "cargo diagnostics" || true
+          git commit -m "build output" || true
           git push origin ci/diagnostics --force || true
 
       - name: Upload Linux binary

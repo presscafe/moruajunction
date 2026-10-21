@@ -34,6 +34,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/aisles/:code", get(aisle_detail))
         .route("/walk", get(walk))
         .route("/providers", get(providers))
+        .route("/areas", get(areas))
         .route("/cart/quote", post(cart_quote))
         .route("/orders", post(create_order))
         .route("/orders/:code", get(order_detail))
@@ -618,6 +619,12 @@ async fn walk(State(state): S) -> Json<Value> {
         })
         .collect();
     Json(json!({"from": from}))
+}
+
+/// Every delivery zone the Junction serves, for the area picker.
+async fn areas(State(_state): S) -> Json<Value> {
+    let list: Vec<&str> = crate::pricing::ZONES.iter().map(|(name, _)| *name).collect();
+    Json(json!({"areas": list}))
 }
 
 async fn providers(State(state): S) -> Json<Value> {
@@ -1440,8 +1447,17 @@ async fn admin_console(State(state): S) -> Json<Value> {
         &[],
     );
 
+    let orders = rows(
+        &conn,
+        "SELECT id, code, customer_name, customer_phone, customer_area, fulfilment, status, payment_method,
+                total_pula, placed_at, delivery_provider_id, delivery_provider_name, rider_name
+         FROM orders ORDER BY id DESC LIMIT 40",
+        &[],
+    );
+
     Json(json!({
         "stores": stores,
+        "orders": orders,
         "pendingApprovals": stores.iter().filter(|s| s.get("approval_status").and_then(|v| v.as_str()) == Some("pending")).count(),
         "disputes": disputes,
         "anomalies": anomalies,
