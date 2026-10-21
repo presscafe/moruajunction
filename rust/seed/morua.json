@@ -665,7 +665,15 @@
    "unit_label": "MOO2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-08-12T09:00:00.000Z"
+   "opened_on": "2025-08-12T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 15,
@@ -703,7 +711,15 @@
    "unit_label": "D3-03",
    "unit_x": 0.54,
    "unit_y": 0.2,
-   "opened_on": "2014-11-19"
+   "opened_on": "2014-11-19",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 1,
@@ -741,7 +757,15 @@
    "unit_label": "A2-01",
    "unit_x": 0.09,
    "unit_y": 0.2,
-   "opened_on": "1998-04-12"
+   "opened_on": "1998-04-12",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 40,
@@ -779,7 +803,15 @@
    "unit_label": "PA1-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-11-01T09:00:00.000Z"
+   "opened_on": "2025-11-01T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 53,
@@ -817,7 +849,15 @@
    "unit_label": "SP2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-09-26T09:00:00.000Z"
+   "opened_on": "2025-09-26T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 8,
@@ -855,7 +895,15 @@
    "unit_label": "B4-04",
    "unit_x": 0.765,
    "unit_y": 0.2,
-   "opened_on": "2009-08-20"
+   "opened_on": "2009-08-20",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 31,
@@ -893,7 +941,15 @@
    "unit_label": "SA2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-11-28T09:00:00.000Z"
+   "opened_on": "2025-11-28T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 16,
@@ -931,7 +987,15 @@
    "unit_label": "D4-04",
    "unit_x": 0.765,
    "unit_y": 0.2,
-   "opened_on": "2020-02-14"
+   "opened_on": "2020-02-14",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 59,
@@ -969,7 +1033,15 @@
    "unit_label": "KS1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-09-08T09:00:00.000Z"
+   "opened_on": "2025-09-08T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 7,
@@ -1007,7 +1079,15 @@
    "unit_label": "B3-03",
    "unit_x": 0.54,
    "unit_y": 0.2,
-   "opened_on": "2017-11-03"
+   "opened_on": "2017-11-03",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 55,
@@ -1045,7 +1125,15 @@
    "unit_label": "MN1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-09-17T09:00:00.000Z"
+   "opened_on": "2025-09-17T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 18,
@@ -1083,7 +1171,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 2,
@@ -1121,7 +1217,15 @@
    "unit_label": "A1-02",
    "unit_x": 0.315,
    "unit_y": 0.2,
-   "opened_on": "2003-09-02"
+   "opened_on": "2003-09-02",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 49,
@@ -1159,7 +1263,15 @@
    "unit_label": "GH1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-10-05T09:00:00.000Z"
+   "opened_on": "2025-10-05T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 48,
@@ -1197,7 +1309,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 41,
@@ -1235,7 +1355,15 @@
    "unit_label": "PA2-03",
    "unit_x": 0.626,
    "unit_y": 0.2,
-   "opened_on": "2025-11-01T09:00:00.000Z"
+   "opened_on": "2025-11-01T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 11,
@@ -1273,7 +1401,15 @@
    "unit_label": "C3-03",
    "unit_x": 0.54,
    "unit_y": 0.2,
-   "opened_on": "2019-07-12"
+   "opened_on": "2019-07-12",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 50,
@@ -1311,7 +1447,15 @@
    "unit_label": "GH2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-10-05T09:00:00.000Z"
+   "opened_on": "2025-10-05T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 44,
@@ -1349,7 +1493,15 @@
    "unit_label": "LE2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-10-23T09:00:00.000Z"
+   "opened_on": "2025-10-23T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 26,
@@ -1387,7 +1539,15 @@
    "unit_label": "KA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-12-07T09:00:00.000Z"
+   "opened_on": "2025-12-07T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 25,
@@ -1425,7 +1585,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 12,
@@ -1463,7 +1631,15 @@
    "unit_label": "C4-04",
    "unit_x": 0.765,
    "unit_y": 0.2,
-   "opened_on": "2001-04-18"
+   "opened_on": "2001-04-18",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 58,
@@ -1501,7 +1677,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 60,
@@ -1539,7 +1723,15 @@
    "unit_label": "KS2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-09-08T09:00:00.000Z"
+   "opened_on": "2025-09-08T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 23,
@@ -1577,7 +1769,15 @@
    "unit_label": "LA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-12-16T09:00:00.000Z"
+   "opened_on": "2025-12-16T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 37,
@@ -1615,7 +1815,15 @@
    "unit_label": "MO2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-11-10T09:00:00.000Z"
+   "opened_on": "2025-11-10T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 6,
@@ -1653,7 +1861,15 @@
    "unit_label": "B2-02",
    "unit_x": 0.315,
    "unit_y": 0.2,
-   "opened_on": "2018-01-15"
+   "opened_on": "2018-01-15",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 3,
@@ -1691,7 +1907,15 @@
    "unit_label": "A3-03",
    "unit_x": 0.54,
    "unit_y": 0.2,
-   "opened_on": "2011-02-18"
+   "opened_on": "2011-02-18",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 43,
@@ -1729,7 +1953,15 @@
    "unit_label": "LE1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-10-23T09:00:00.000Z"
+   "opened_on": "2025-10-23T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 42,
@@ -1767,7 +1999,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 24,
@@ -1805,7 +2045,15 @@
    "unit_label": "LA2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-12-16T09:00:00.000Z"
+   "opened_on": "2025-12-16T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 22,
@@ -1843,7 +2091,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 33,
@@ -1881,7 +2137,15 @@
    "unit_label": "MA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-11-19T09:00:00.000Z"
+   "opened_on": "2025-11-19T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 32,
@@ -1919,7 +2183,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 66,
@@ -1957,7 +2229,15 @@
    "unit_label": "NA2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-08-21T09:00:00.000Z"
+   "opened_on": "2025-08-21T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 47,
@@ -1995,7 +2275,15 @@
    "unit_label": "TS2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-10-14T09:00:00.000Z"
+   "opened_on": "2025-10-14T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 54,
@@ -2033,7 +2321,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 57,
@@ -2071,7 +2367,15 @@
    "unit_label": "MN3-03",
    "unit_x": 0.626,
    "unit_y": 0.2,
-   "opened_on": "2025-09-17T09:00:00.000Z"
+   "opened_on": "2025-09-17T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 5,
@@ -2109,7 +2413,15 @@
    "unit_label": "B1-01",
    "unit_x": 0.09,
    "unit_y": 0.2,
-   "opened_on": "2014-03-08"
+   "opened_on": "2014-03-08",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 35,
@@ -2147,7 +2459,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 36,
@@ -2185,7 +2505,15 @@
    "unit_label": "MO1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-11-10T09:00:00.000Z"
+   "opened_on": "2025-11-10T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 68,
@@ -2223,7 +2551,15 @@
    "unit_label": "MOO1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-08-12T09:00:00.000Z"
+   "opened_on": "2025-08-12T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 67,
@@ -2261,7 +2597,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 17,
@@ -2299,7 +2643,15 @@
    "unit_label": "E2-01",
    "unit_x": 0.09,
    "unit_y": 0.2,
-   "opened_on": "2026-02-01"
+   "opened_on": "2026-02-01",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 64,
@@ -2337,7 +2689,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 65,
@@ -2375,7 +2735,15 @@
    "unit_label": "NA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-08-21T09:00:00.000Z"
+   "opened_on": "2025-08-21T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 21,
@@ -2413,7 +2781,15 @@
    "unit_label": "FA3-03",
    "unit_x": 0.626,
    "unit_y": 0.2,
-   "opened_on": "2025-12-25T09:00:00.000Z"
+   "opened_on": "2025-12-25T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 56,
@@ -2451,7 +2827,15 @@
    "unit_label": "MN2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-09-17T09:00:00.000Z"
+   "opened_on": "2025-09-17T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 38,
@@ -2489,7 +2873,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 39,
@@ -2527,7 +2919,15 @@
    "unit_label": "PA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-11-01T09:00:00.000Z"
+   "opened_on": "2025-11-01T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 52,
@@ -2565,7 +2965,15 @@
    "unit_label": "SP1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-09-26T09:00:00.000Z"
+   "opened_on": "2025-09-26T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 19,
@@ -2603,7 +3011,15 @@
    "unit_label": "FA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-12-25T09:00:00.000Z"
+   "opened_on": "2025-12-25T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 34,
@@ -2641,7 +3057,15 @@
    "unit_label": "MA2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-11-19T09:00:00.000Z"
+   "opened_on": "2025-11-19T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 51,
@@ -2679,7 +3103,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 29,
@@ -2717,7 +3149,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 30,
@@ -2755,7 +3195,15 @@
    "unit_label": "SA1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-11-28T09:00:00.000Z"
+   "opened_on": "2025-11-28T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 72,
@@ -2793,7 +3241,15 @@
    "unit_label": "TL1-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-08-03T09:00:00.000Z"
+   "opened_on": "2025-08-03T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 4,
@@ -2831,7 +3287,15 @@
    "unit_label": "A4-04",
    "unit_x": 0.765,
    "unit_y": 0.2,
-   "opened_on": "2016-06-30"
+   "opened_on": "2016-06-30",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 27,
@@ -2869,7 +3333,15 @@
    "unit_label": "KA3-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-12-07T09:00:00.000Z"
+   "opened_on": "2025-12-07T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 14,
@@ -2907,7 +3379,15 @@
    "unit_label": "D2-02",
    "unit_x": 0.315,
    "unit_y": 0.2,
-   "opened_on": "2016-02-26"
+   "opened_on": "2016-02-26",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 28,
@@ -2945,7 +3425,15 @@
    "unit_label": "KA2-03",
    "unit_x": 0.626,
    "unit_y": 0.2,
-   "opened_on": "2025-12-07T09:00:00.000Z"
+   "opened_on": "2025-12-07T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 20,
@@ -2983,7 +3471,15 @@
    "unit_label": "FA2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-12-25T09:00:00.000Z"
+   "opened_on": "2025-12-25T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 10,
@@ -3021,7 +3517,15 @@
    "unit_label": "C2-02",
    "unit_x": 0.315,
    "unit_y": 0.2,
-   "opened_on": "2012-10-05"
+   "opened_on": "2012-10-05",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 13,
@@ -3059,7 +3563,15 @@
    "unit_label": "D1-01",
    "unit_x": 0.09,
    "unit_y": 0.2,
-   "opened_on": "2013-07-01"
+   "opened_on": "2013-07-01",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 71,
@@ -3097,7 +3609,15 @@
    "unit_label": "TL1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-08-03T09:00:00.000Z"
+   "opened_on": "2025-08-03T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 70,
@@ -3135,7 +3655,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 46,
@@ -3173,7 +3701,15 @@
    "unit_label": "TS1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-10-14T09:00:00.000Z"
+   "opened_on": "2025-10-14T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 45,
@@ -3211,7 +3747,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 9,
@@ -3249,7 +3793,15 @@
    "unit_label": "C1-01",
    "unit_x": 0.09,
    "unit_y": 0.2,
-   "opened_on": "2015-05-22"
+   "opened_on": "2015-05-22",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 62,
@@ -3287,7 +3839,15 @@
    "unit_label": "TSU1-01",
    "unit_x": 0.12,
    "unit_y": 0.2,
-   "opened_on": "2025-08-30T09:00:00.000Z"
+   "opened_on": "2025-08-30T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 61,
@@ -3325,7 +3885,15 @@
    "unit_label": "HUB",
    "unit_x": 0.5,
    "unit_y": 0.56,
-   "opened_on": "2025-08-27T09:00:00.000Z"
+   "opened_on": "2025-08-27T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   },
   {
    "id": 63,
@@ -3363,7 +3931,15 @@
    "unit_label": "TSU2-02",
    "unit_x": 0.373,
    "unit_y": 0.2,
-   "opened_on": "2025-08-30T09:00:00.000Z"
+   "opened_on": "2025-08-30T09:00:00.000Z",
+   "approval_status": "pending",
+   "approval_note": "",
+   "approved_at": null,
+   "approved_by": null,
+   "markup_pct": 0,
+   "markup_note": "",
+   "markup_set_by": null,
+   "markup_set_at": null
   }
  ],
  "products": [

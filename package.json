@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Morua Junction \u2014 Gaborone's virtual mall. A virtual alternative to the city's physical shops.",
+  "description": "Morua Junction \u2014 Botswana's virtual mall. A Rust marketplace with an offline-first PWA storefront.",
   "scripts": {
-    "dev": "concurrently -n api,web -c magenta,cyan \"tsx watch server/index.ts\" \"vite\"",
-    "dev:api": "tsx watch server/index.ts",
+    "dev": "concurrently -n api,web -c magenta,cyan \"cargo run --manifest-path rust/Cargo.toml\" \"vite\"",
+    "dev:api": "cargo run --manifest-path rust/Cargo.toml",
     "dev:web": "vite",
-    "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.mjs",
-    "start": "node dist/server.mjs",
-    "seed": "tsx server/seed-cli.ts",
+    "build": "npm run build:web",
+    "build:web": "vite build",
+    "start": "./rust/target/release/morua",
+    "dataset": "tsx scripts/dump-seed.ts",
     "typecheck": "tsc --noEmit",
-    "build:web": "vite build"
+    "test:rust": "cargo test --manifest-path rust/Cargo.toml"
   },
   "dependencies": {
     "express": "^4.21.2",
