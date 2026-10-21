@@ -3,9 +3,12 @@ name: build
 on:
   push:
     branches:
-      - "**"
+      - arena/1f00941f-moruajunction
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   rust:
@@ -16,6 +19,8 @@ jobs:
         working-directory: rust
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -34,20 +39,7 @@ jobs:
           set +e
           cargo test 2>&1 | tee cargo-test.log
           status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo "::group::cargo test failures"
-            {
-              echo '### cargo test'
-              echo '```'
-              grep -E "^(error|warning|failures:|test .* FAILED)|^ *--> " cargo-test.log | head -60
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            grep -E "^(error|warning|failures:|test .* FAILED)" cargo-test.log | head -40 | while IFS= read -r line; do
-              echo "::error title=cargo::${line//::/:}"
-            done
-            echo "::endgroup::"
-          fi
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
       - name: Build release binary
@@ -55,21 +47,22 @@ jobs:
           set +e
           cargo build --release 2>&1 | tee cargo-build.log
           status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo "::group::cargo build errors"
-            {
-              echo '### cargo build'
-              echo '```'
-              grep -E "^(error|warning)|^ *--> " cargo-build.log | head -60
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            grep -E "^(error|warning)" cargo-build.log | head -40 | while IFS= read -r line; do
-              echo "::error title=cargo::${line//::/:}"
-            done
-            echo "::endgroup::"
-          fi
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
           exit $status
+
+      - name: Publish diagnostics
+        if: failure()
+        run: |
+          mkdir -p ../diagnostics
+          cp rust/cargo-test.log ../diagnostics/cargo-test.log 2>/dev/null || true
+          cp rust/cargo-build.log ../diagnostics/cargo-build.log 2>/dev/null || true
+          cd ..
+          git config user.name "morua-ci"
+          git config user.email "morua-ci@users.noreply.github.com"
+          git checkout -B ci/diagnostics
+          git add -f diagnostics || true
+          git commit -m "cargo diagnostics" || true
+          git push origin ci/diagnostics --force || true
 
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
