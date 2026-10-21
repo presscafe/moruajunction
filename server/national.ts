@@ -10,209 +10,16 @@
  * Town price factors reflect real freight cost into the interior.
  * ------------------------------------------------------------------ */
 
-export interface NatItem {
-  name: string
-  blurb: string
-  price: number
-  zar: number
-  kg: number
-  icon: string
-  stock: number
-  unit?: string
-  duty?: number
-  category: string
-}
+import type { NatBranch, NatItem, NatShop } from './types.ts'
+import { MORE_BRANCHES } from './national-branches.ts'
+import { CATALOGUE, LIBRARY as CATALOGUE_LIBRARY } from './catalogue.ts'
 
-export interface NatShop {
-  slug: string
-  name: string
-  aisle: string
-  tagline: string
-  story: string
-  accent: string
-  accentSoft: string
-  icon: string
-  banner: string
-  area: string
-  address: string
-  phone: string
-  hours: string
-  returnPolicy: string
-  deliveryPromise: string
-  staff: { name: string; role: string }[]
-  sections: { title: string; kind: string }[]
-  tags: string[]
-  accuracy: number
-  prepMinutes: number
-  rating: number
-  reviews: number
-  items: string[]
-}
-
-export interface NatBranch {
-  town: string
-  district: string
-  region: string
-  factor: number
-  hub: {
-    slug: string
-    name: string
-    tagline: string
-    story: string
-    accent: string
-    accentSoft: string
-    icon: string
-    banner: string
-    area: string
-    address: string
-    phone: string
-    hours: string
-  }
-  aisles: { code: string; name: string; blurb: string }[]
-  shops: NatShop[]
-}
-
-/* ------------------------------- library ------------------------------- */
-
-const L = (
-  key: string,
-  name: string,
-  blurb: string,
-  price: number,
-  zar: number,
-  kg: number,
-  icon: string,
-  stock: number,
-  category: string,
-  duty = 0,
-  unit = 'each',
-): [string, NatItem] => [
-  key,
-  { name, blurb, price, zar, kg, icon, stock, category, duty, unit },
-]
-
-export const LIBRARY: Record<string, NatItem> = Object.fromEntries([
-  // Groceries & staples
-  L('maize-10kg', 'Maize meal 10kg', 'Stone-ground, packed this week', 165, 118, 10, '🌽', 45, 'Groceries & Staples'),
-  L('maize-50kg', 'Maize meal 50kg', 'The wholesaler sack, graded', 690, 495, 50, '🌽', 12, 'Groceries & Staples'),
-  L('rice-5kg', 'Rice 5kg', 'Long grain parboiled', 96, 78, 5, '🍚', 36, 'Groceries & Staples'),
-  L('oil-5l', 'Cooking oil 5L', 'Sunflower, locally blended', 288, 235, 5.4, '🫗', 22, 'Groceries & Staples'),
-  L('oil-1l', 'Cooking oil 1L', 'Everyday bottle', 68, 55, 1.05, '🫗', 60, 'Groceries & staples'),
-  L('sugar-2kg', 'Sugar 2kg', 'Fine-grade white sugar', 78, 62, 2, '🧂', 44, 'Groceries & Staples'),
-  L('salt-1kg', 'Table salt 1kg', 'Fine sea salt', 24, 19, 1, '🧂', 70, 'Groceries & Staples'),
-  L('beans-tin', 'Tinned beans 400g', 'Mixed beans in brine', 22, 17, 0.4, '🥫', 90, 'Groceries & Staples'),
-  L('beef-1kg', 'Beef rump 1kg', 'Boned, aged 5 days', 148, 165, 1, '🥩', 18, 'Fresh Produce & Butchery'),
-  L('chicken-2kg', 'Whole chicken 2kg', 'Free-range, dressed', 96, 88, 2, '🍗', 26, 'Fresh Produce & Butchery'),
-  L('goat-1kg', 'Goat meat 1kg', 'Butchered to order', 132, 140, 1, '🍖', 14, 'Fresh Produce & Butchery'),
-  L('tomato-1kg', 'Tomatoes 1kg', 'Vine-ripened, picked yesterday', 22, 28, 1, '🍅', 40, 'Fresh Produce & Butchery'),
-  L('onion-5kg', 'Onions 5kg', 'Medium size, cured', 58, 52, 5, '🧅', 30, 'Fresh Produce & Butchery'),
-  L('sweets-2kg', 'Sweets 2.5kg', 'Mixed, sorted grade', 45, 38, 2.5, '🍠', 35, 'Fresh Produce & Butchery'),
-  L('spinach-bunch', 'Spinach bunch', 'Washed and trimmed', 12, 11, 0.2, '🥬', 50, 'Fresh Produce & Butchery'),
-  L('avocado-each', 'Avocado', 'Hass, ready in two days', 18, 16, 0.25, '🥑', 55, 'Fresh Produce & Butchery'),
-  L('eggs-30', 'Eggs, tray of 30', 'Free-range grade A', 98, 92, 1.8, '🥚', 28, 'Fresh Produce & Butchery'),
-  L('bread-brown', 'Brown bread loaf', 'Baked at 05:00', 19, 17, 0.6, '🍞', 44, 'Bakery & Deli'),
-  L('bread-white', 'White bread loaf', 'Soft-crumb sliced', 17, 15, 0.6, '🍞', 50, 'Bakery & Deli'),
-  L('cake-8', 'Celebration cake, 8 inch', 'Two tiers, iced to order', 340, 330, 2.4, '🎂', 6, 'Bakery & Deli'),
-  L('pies-4', 'Beef pies, pack of 4', 'Baked in the morning', 46, 42, 0.8, '🥧', 20, 'Bakery & Deli'),
-  L('water-5l', 'Still water 5L', 'Borehole-sourced', 28, 26, 5, '💧', 90, 'Beverages & Cellar'),
-  L('juice-1l', 'Orange juice 1L', 'Not from concentrate', 46, 42, 1.1, '🧃', 38, 'Beverages & Cellar'),
-  L('cola-2l', 'Soft drink 2L', 'Chilled family size', 34, 30, 2.1, '🥤', 64, 'Beverages & Cellar'),
-  L('beer-crate', 'Beer, crate of 12', 'Local lager, 750ml', 175, 165, 9.6, '🍺', 14, 'Beverages & Cellar'),
-  L('sphag-1kg', 'Spaghetti 1kg', 'Bronze-cut durum', 38, 32, 1, '🍝', 48, 'Groceries & Staples'),
-
-  // Home, hardware, DIY
-  L('cement-50kg', 'Cement 50kg', 'Factory bag, fresh date', 96, 88, 50, '🧱', 60, 'Hardware & DIY'),
-  L('paint-5l', 'Paints 5L', 'Interior emulsion, tintable', 285, 260, 6, '🪣', 16, 'Hardware & DIY'),
-  L('nails-1kg', 'Nails 1kg', 'Common wire nails', 68, 60, 1.1, '🔨', 32, 'Hardware & DIY'),
-  L('shovel', 'Spade with handle', 'Pressed steel blade', 78, 72, 2.4, '🪓', 24, 'Hardware & DIY'),
-  L('pvc-6m', 'PVC pipe 6m', '110mm pressure pipe', 145, 132, 6, '🔧', 18, 'Hardware & DIY'),
-  L('cooking-set', '3-pot cooking set', 'Aluminium, glass lids', 685, 640, 4.2, '🍳', 8, 'Home & Kitchen'),
-  L('plate-set-12', 'Dinner plates, set of 12', 'Glazed stoneware', 340, 320, 5.5, '🍽️', 12, 'Home & Kitchen'),
-  L('mug-6', 'Mugs, set of 6', 'Stackable', 120, 110, 1.6, '☕', 20, 'Home & Kitchen'),
-  L('bedset-king', 'Bedding set, king', 'Cotton, 400 thread count', 540, 520, 2.4, '🛏️', 10, 'Home & Kitchen'),
-  L('tissue-10', 'Tissue, 10 rolls', 'Two-ply, quilted', 72, 66, 2, '🧻', 48, 'Household & Cleaning'),
-  L('powder-2kg', 'Laundry powder 2kg', 'Low-suds formula', 88, 80, 2, '🧼', 26, 'Household & Cleaning'),
-  L('broom', 'Hard broom', 'Local grass, stitched', 34, 30, 1.2, '🧹', 40, 'Household & Cleaning'),
-
-  // Health, beauty, pharmacy
-  L('panadol-20', 'Panadol 20 tablets', 'Paracetamol 500mg', 38, 35, 0.05, '💊', 55, 'Health & Beauty'),
-  L('vitc-100', 'Vitamin C 100 tablets', '1000mg effervescent', 92, 88, 0.2, '🧪', 24, 'Health & Beauty'),
-  L('repellent-200', 'Insect repellent 200ml', 'DEET 15%', 118, 110, 0.25, '🧴', 30, 'Health & Beauty'),
-  L('face-cream', 'Face cream 50ml', 'Shea and aloe', 156, 148, 0.08, '🧴', 22, 'Health & Beauty'),
-  L('relaxer-kit', 'Hair relaxer kit', 'For the salon chair', 240, 225, 1.1, '💇', 18, 'Health & Beauty'),
-  L('wig', 'Braided wig unit', 'Ready to install', 480, 450, 0.6, '💇‍♀️', 8, 'Health & Beauty'),
-  L('beads-strap', 'Beaded strap', 'Botswana flag colours', 145, 135, 0.3, '📿', 22, 'Jewellery & Gifts'),
-  L('gold-pendant', 'Gold pendant 9ct', 'Chain and pendant set', 2450, 2300, 0.05, '📿', 3, 'Jewellery & Gifts'),
-
-  // Fashion, footwear, accessories
-  L('tee-2', 'T-shirts, pack of 2', '100% cotton', 135, 120, 0.4, '👕', 34, 'Fashion'),
-  L('jeans', 'Denim jeans', 'Mid-wash, straight leg', 320, 300, 0.7, '👖', 20, 'Fashion'),
-  L('dress', 'Printed dress', 'Breezy rayon, lined', 285, 265, 0.4, '👗', 14, 'Fashion'),
-  L('sneakers', 'Sneakers', 'Canvas, rubber sole', 390, 360, 0.9, '👟', 16, 'Footwear'),
-  L('boots-safety', 'Safety boots', 'Steel toe, SABS rated', 690, 660, 1.6, '🥾', 12, 'Footwear'),
-  L('sandals', 'Leather sandals', 'Hand-lasted', 265, 250, 0.7, '🩴', 18, 'Footwear'),
-  L('bag-hand', 'Handbag', 'Full-grain leather', 540, 520, 0.8, '👜', 10, 'Bags & Accessories'),
-  L('traditional-dress', 'Traditional attire set', 'Thobe and jacket', 1250, 1180, 1.2, '🎽', 6, 'Fashion'),
-  L('fabric-6m', 'Fabric 6 metres', 'Wrinkle-free poly-cotton', 145, 135, 1.1, '🧵', 24, 'Fashion'),
-
-  // Mobile, tech, accessories
-  L('handset-basic', 'Smartphone 128GB', '6.5 inch, dual SIM', 3650, 3400, 0.4, '📱', 12, 'Mobile & Tablets'),
-  L('handset-plus', 'Smartphone 256GB', '6.7 inch, 5G', 7850, 7400, 0.45, '📱', 6, 'Mobile & Tablets'),
-  L('laptop-14', 'Laptop 14 inch', '16GB RAM, 512GB SSD', 21500, 19900, 1.8, '💻', 4, 'Computing & Gaming'),
-  L('tv-43', 'Television 43 inch', 'Smart Android, FHD', 7900, 7500, 8.2, '📺', 6, 'Audio & TV'),
-  L('soundbar', 'Soundbar 2.1', 'Wireless subwoofer', 3250, 3050, 4.1, '🔊', 8, 'Audio & TV'),
-  L('charger-typec', 'USB-C charger 30W', 'Fast charge', 165, 155, 0.2, '🔌', 45, 'Accessories'),
-  L('case-phone', 'Phone case', 'Shockproof, clear', 95, 88, 0.08, '🧱', 50, 'Accessories'),
-  L('airtime-5', 'Airtime bundle 5GB', '30-day data, all networks', 120, 115, 0, '📶', 999, 'Mobile & Tablets'),
-  L('powerbank', 'Power bank 20 000mAh', 'Dual USB, fast charge', 540, 520, 0.45, '🔋', 16, 'Accessories'),
-  L('console', 'Game console', '1TB drive, two controllers', 8900, 8500, 3.2, '🎮', 3, 'Computing & Gaming'),
-
-  // Auto, mining, farm
-  L('oil-filter', 'Oil filter', 'Fits common 1.6–2.0 petrol', 145, 138, 0.5, '🛢️', 30, 'Motor Spares'),
-  L('brake-pads', 'Brake pad set', 'Front axle, ceramic', 620, 590, 1.8, '🛑', 14, 'Motor Spares'),
-  L('wipers', 'Wiper blades, pair', 'Universal fit', 210, 198, 0.3, '🧽', 26, 'Motor Spares'),
-  L('battery-12v', 'Car battery 12V', '70Ah, 3-year warranty', 2350, 2250, 17, '🔋', 6, 'Motor Spares'),
-  L('hardhat', 'Hard hat', 'Adjustable harness', 165, 158, 0.4, '⛑️', 34, 'Mining & Industrial'),
-  L('hi-vis', 'Reflective vest', 'Class 2, yellow', 145, 138, 0.3, '🦺', 40, 'Mining & Industrial'),
-  L('gloves-pair', 'Work gloves, pair', 'Split leather', 135, 128, 0.3, '🧤', 44, 'Mining & Industrial'),
-  L('welding-rod', 'Welding rods 5kg', 'E6013, 2.5mm', 480, 450, 5, '⚡', 12, 'Mining & Industrial'),
-  L('chicken-feed', 'Chicken feed 50kg', 'Layer mash', 640, 580, 50, '🐔', 20, 'Farm & Poultry'),
-  L('fence-wire', 'Fencing wire, 25kg roll', 'Galvanised 400m', 980, 900, 25, '🧵', 10, 'Farm & Poultry'),
-  L('boots-farm', 'Farm boots', 'Gumboots, green', 320, 300, 1.2, '🥾', 18, 'Farm & Poultry'),
-  L('drill', 'Cordless drill', 'Two batteries and charger', 1450, 1380, 2.4, '🛠️', 8, 'Hardware & DIY'),
-
-  // Tourism, outdoor, fishing
-  L('binoculars', 'Binoculars 10x42', 'Roofed, rubber armoured', 1350, 1280, 0.7, '🔭', 7, 'Tourism & Safari'),
-  L('tent-3p', 'Dome tent, 3 person', 'All-season, fly included', 2450, 2300, 6.5, '⛺', 6, 'Tourism & Safari'),
-  L('cooler-35', 'Cool box 35L', 'Rotomoulded, ice for 2 days', 890, 840, 4.2, '🧊', 9, 'Tourism & Safari'),
-  L('ranger-tee', 'Ranger T-shirt', 'Washed cotton, pocket', 190, 175, 0.2, '👕', 28, 'Tourism & Safari'),
-  L('compass', 'Magnetic compass', 'Lifeline, luminous dial', 165, 155, 0.2, '🧭', 20, 'Tourism & Safari'),
-  L('rod-6ft', 'Fishing rod 6ft', 'Graphite blank, 2 guides', 1150, 1080, 0.9, '🎣', 8, 'Fishing & Outdoor'),
-  L('bait-pack', 'Bait pack', 'Soft plastic, 20 pieces', 145, 138, 0.4, '🐟', 24, 'Fishing & Outdoor'),
-  L('lifejacket', 'Life jacket', 'Buckles, adjustable', 680, 650, 1.1, '🦺', 9, 'Fishing & Outdoor'),
-  L('camp-chair', 'Folding camp chair', 'Steel frame, canvas', 520, 490, 3.4, '🪑', 11, 'Fishing & Outdoor'),
-  L('carving', 'Wood carving', 'Mopane, hand-carved', 240, 230, 1.1, '🪵', 14, 'Curios & Crafts'),
-  L('candle', 'Scented candle', 'Wax, 220g', 95, 88, 0.4, '🕯️', 30, 'Curios & Crafts'),
-  L('skincare-3', 'Shea butter trio', 'Soap, butter and balm', 165, 155, 0.6, '🧼', 26, 'Curios & Crafts'),
-
-  // Fuel, provisions, auto-tyre
-  L('fuel-20l', 'Diesel, 20 litres', 'Depot-filled jerry can', 420, 390, 20, '⛽', 24, 'Provisions & Fuel'),
-  L('jerry-can', 'Jerry can 20L', 'Food-grade, sealed', 145, 135, 1.4, '🛢️', 18, 'Provisions & Fuel'),
-  L('tire', 'Tyre 205/55R16', 'Passenger, 3mm tread', 1850, 1750, 9, '🛞', 6, 'Provisions & Fuel'),
-  L('food-bundle', 'Family food bundle', 'Maize, oil, sugar, beans', 430, 390, 18, '🧺', 14, 'Provisions & Fuel'),
-  L('bottled-beer-24', 'Bottled beer, crate of 24', 'Returnable crates', 330, 310, 16, '🍺', 10, 'Provisions & Fuel'),
-
-  // Small odds and ends
-  L('earbuds', 'Wireless earbuds', 'Touch case, 24h battery', 420, 395, 0.2, '🎧', 26, 'Accessories'),
-  L('soap-3', 'Soap, pack of 3', 'Goat milk, hand-made', 78, 72, 0.4, '🧼', 34, 'Household & Cleaning'),
-  L('sourdough', 'Sourdough loaf', 'Slow fermented, 36 hours', 42, 38, 0.7, '🍞', 16, 'Bakery & Deli'),
-  L('kgatekga', 'Kgatekga, 4 pieces', 'Fried dough with beef', 55, 50, 0.9, '🥟', 18, 'Bakery & Deli'),
-  L('kgatlhokwa', 'Kgatlhokwa, 6 pieces', 'Sesame and peanut', 38, 34, 0.6, '🍘', 22, 'Bakery & Deli'),
-])
+/** The single shared catalogue of shelf lines. */
+export const LIBRARY: Record<string, NatItem> = CATALOGUE_LIBRARY as unknown as Record<string, NatItem>
 
 /* ------------------------------ branches ------------------------------ */
 
-export const BRANCHES: NatBranch[] = [
+const FLAGSHIP_BRANCHES: NatBranch[] = [
   {
     town: 'Francistown',
     district: 'North-East',
@@ -270,6 +77,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 84,
         items: ['hardhat', 'hi-vis', 'gloves-pair', 'welding-rod', 'boots-safety', 'drill', 'cement-50kg'],
+        mix: 'mining',
       },
       {
         slug: 'tati-fresh-market',
@@ -302,6 +110,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.7,
         reviews: 191,
         items: ['tomato-1kg', 'onion-5kg', 'sweets-2kg', 'spinach-bunch', 'avocado-each', 'eggs-30', 'beef-1kg', 'chicken-2kg', 'bread-brown'],
+        mix: 'market',
       },
       {
         slug: 'northline-mobile-world',
@@ -334,6 +143,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 112,
         items: ['handset-basic', 'handset-plus', 'airtime-5', 'charger-typec', 'case-phone', 'powerbank', 'earbuds'],
+        mix: 'mobile',
       },
     ],
   },
@@ -393,6 +203,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 63,
         items: ['chicken-feed', 'fence-wire', 'boots-farm', 'shovel', 'nails-1kg', 'cement-50kg', 'maize-50kg'],
+        mix: 'farm',
       },
       {
         slug: 'lobatse-bakehouse',
@@ -425,6 +236,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.8,
         reviews: 147,
         items: ['bread-brown', 'bread-white', 'pies-4', 'cake-8'],
+        mix: 'bakery',
       },
     ],
   },
@@ -485,6 +297,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 118,
         items: ['maize-50kg', 'maize-10kg', 'oil-5l', 'sugar-2kg', 'beans-tin', 'sphag-1kg', 'water-5l', 'cola-2l'],
+        mix: 'grocery',
       },
       {
         slug: 'setswana-heritage-crafts',
@@ -517,6 +330,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.9,
         reviews: 76,
         items: ['fabric-6m', 'carving', 'beads-strap', 'skincare-3', 'candle'],
+        mix: 'crafts',
       },
       {
         slug: 'southern-hardware',
@@ -549,6 +363,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 58,
         items: ['cement-50kg', 'paint-5l', 'nails-1kg', 'shovel', 'pvc-6m', 'drill'],
+        mix: 'hardwareWide',
       },
     ],
   },
@@ -608,6 +423,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.7,
         reviews: 92,
         items: ['beef-1kg', 'goat-1kg', 'chicken-2kg', 'tomato-1kg', 'onion-5kg', 'eggs-30', 'bread-brown'],
+        mix: 'market',
       },
       {
         slug: 'camelthorn-naturals',
@@ -640,6 +456,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.8,
         reviews: 64,
         items: ['face-cream', 'skincare-3', 'candle', 'repellent-200'],
+        mix: 'beauty',
       },
     ],
   },
@@ -699,6 +516,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 133,
         items: ['maize-50kg', 'oil-5l', 'sugar-2kg', 'rice-5kg', 'beans-tin', 'tissue-10', 'powder-2kg', 'water-5l'],
+        mix: 'foodHall',
       },
       {
         slug: 'pula-motor-spares',
@@ -731,6 +549,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 71,
         items: ['oil-filter', 'brake-pads', 'wipers', 'battery-12v', 'tire', 'drill'],
+        mix: 'motor',
       },
     ],
   },
@@ -790,6 +609,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 49,
         items: ['maize-10kg', 'oil-1l', 'sugar-2kg', 'bread-brown', 'juice-1l', 'tissue-10', 'powder-2kg', 'soap-3'],
+        mix: 'grocery',
       },
       {
         slug: 'kgatleng-poultry',
@@ -822,6 +642,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 38,
         items: ['chicken-feed', 'fence-wire', 'maize-50kg', 'spinach-bunch', 'shovel'],
+        mix: 'farm',
       },
     ],
   },
@@ -881,6 +702,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 88,
         items: ['tomato-1kg', 'onion-5kg', 'sweets-2kg', 'avocado-each', 'eggs-30', 'chicken-2kg', 'beef-1kg'],
+        mix: 'market',
       },
       {
         slug: 'boro-and-sons-butchery',
@@ -913,6 +735,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.8,
         reviews: 104,
         items: ['beef-1kg', 'goat-1kg', 'chicken-2kg', 'eggs-30'],
+        mix: 'butcher',
       },
       {
         slug: 'home-by-the-lake',
@@ -945,6 +768,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 47,
         items: ['cooking-set', 'plate-set-12', 'mug-6', 'bedset-king', 'tissue-10'],
+        mix: 'homeware',
       },
     ],
   },
@@ -1004,6 +828,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 52,
         items: ['maize-50kg', 'maize-10kg', 'oil-5l', 'sugar-2kg', 'water-5l', 'juice-1l', 'tissue-10', 'powder-2kg'],
+        mix: 'grocery',
       },
       {
         slug: 'kalaka-textiles',
@@ -1036,6 +861,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 41,
         items: ['fabric-6m', 'traditional-dress', 'dress', 'tee-2'],
+        mix: 'textiles',
       },
     ],
   },
@@ -1095,6 +921,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.3,
         reviews: 29,
         items: ['food-bundle', 'jerry-can', 'fuel-20l', 'oil-filter', 'wipers', 'tire', 'battery-12v', 'bottled-beer-24'],
+        mix: 'provisions',
       },
       {
         slug: 'makgadikgadi-outdoor-hire',
@@ -1127,6 +954,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 36,
         items: ['tent-3p', 'cooler-35', 'camp-chair', 'binoculars', 'compass', 'ranger-tee'],
+        mix: 'outdoor',
       },
     ],
   },
@@ -1186,6 +1014,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.7,
         reviews: 54,
         items: ['beef-1kg', 'goat-1kg', 'chicken-2kg', 'sourdough'],
+        mix: 'butcher',
       },
       {
         slug: 'kalahari-trading-post',
@@ -1218,6 +1047,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 27,
         items: ['tent-3p', 'cooler-35', 'camp-chair', 'water-5l', 'food-bundle', 'jerry-can', 'binoculars', 'ranger-tee'],
+        mix: 'provisions',
       },
     ],
   },
@@ -1277,6 +1107,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 61,
         items: ['maize-10kg', 'oil-5l', 'sugar-2kg', 'beans-tin', 'cement-50kg', 'paint-5l', 'water-5l', 'tissue-10'],
+        mix: 'foodHall',
       },
       {
         slug: 'boshweu-fashion',
@@ -1309,6 +1140,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 33,
         items: ['tee-2', 'jeans', 'dress', 'sneakers', 'sandals', 'bag-hand'],
+        mix: 'fashion',
       },
     ],
   },
@@ -1369,6 +1201,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.8,
         reviews: 88,
         items: ['binoculars', 'tent-3p', 'compass', 'ranger-tee', 'camp-chair'],
+        mix: 'outdoor',
       },
       {
         slug: 'okavango-angler',
@@ -1401,6 +1234,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.7,
         reviews: 72,
         items: ['rod-6ft', 'bait-pack', 'lifejacket', 'cooler-35'],
+        mix: 'fishing',
       },
       {
         slug: 'maun-trading-co',
@@ -1433,6 +1267,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 79,
         items: ['maize-10kg', 'oil-5l', 'sugar-2kg', 'water-5l', 'food-bundle', 'jerry-can', 'fuel-20l', 'juice-1l'],
+        mix: 'generalWide',
       },
     ],
   },
@@ -1492,6 +1327,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 44,
         items: ['binoculars', 'cooler-35', 'camp-chair', 'ranger-tee', 'compass'],
+        mix: 'lodge',
       },
       {
         slug: 'kasane-riverside-curios',
@@ -1524,6 +1360,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.8,
         reviews: 37,
         items: ['beads-strap', 'carving', 'candle', 'skincare-3'],
+        mix: 'crafts',
       },
     ],
   },
@@ -1583,6 +1420,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 25,
         items: ['hardhat', 'hi-vis', 'gloves-pair', 'welding-rod', 'boots-safety', 'drill'],
+        mix: 'mining',
       },
       {
         slug: 'zambezi-auto-spares',
@@ -1615,6 +1453,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 31,
         items: ['oil-filter', 'brake-pads', 'wipers', 'battery-12v', 'tire', 'lifejacket'],
+        mix: 'autoTyres',
       },
     ],
   },
@@ -1674,6 +1513,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.3,
         reviews: 18,
         items: ['food-bundle', 'water-5l', 'bread-brown', 'jerry-can', 'fuel-20l', 'bottled-beer-24', 'juice-1l'],
+        mix: 'provisions',
       },
       {
         slug: 'makgadikgadi-camping',
@@ -1706,6 +1546,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.5,
         reviews: 21,
         items: ['tent-3p', 'cooler-35', 'camp-chair', 'binoculars', 'compass'],
+        mix: 'outdoor',
       },
     ],
   },
@@ -1765,6 +1606,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 134,
         items: ['maize-10kg', 'oil-1l', 'bread-brown', 'juice-1l', 'cola-2l', 'tissue-10', 'powder-2kg', 'eggs-30'],
+        mix: 'grocery',
       },
       {
         slug: 'a-letshego-fashion-house',
@@ -1797,6 +1639,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.6,
         reviews: 86,
         items: ['tee-2', 'jeans', 'dress', 'sandals', 'bag-hand', 'traditional-dress'],
+        mix: 'fashion',
       },
     ],
   },
@@ -1856,6 +1699,7 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.4,
         reviews: 44,
         items: ['maize-10kg', 'oil-5l', 'sugar-2kg', 'bread-brown', 'water-5l', 'juice-1l', 'tissue-10'],
+        mix: 'general',
       },
       {
         slug: 'seshegue-bakehouse',
@@ -1888,7 +1732,11 @@ export const BRANCHES: NatBranch[] = [
         rating: 4.7,
         reviews: 62,
         items: ['bread-brown', 'bread-white', 'pies-4', 'cake-8'],
+        mix: 'bakery',
       },
     ],
   },
 ]
+
+/** Every branch in the country: the flagship pavilions and the district towns. */
+export const BRANCHES: NatBranch[] = [...FLAGSHIP_BRANCHES, ...MORE_BRANCHES]

@@ -1,6 +1,8 @@
 import { db, ensureColumns, isSeeded, migrate } from './db.ts'
 import { dutyForCategory, round2 } from './pricing.ts'
-import { BRANCHES, LIBRARY } from './national.ts'
+import { BRANCHES } from './national.ts'
+import { CATALOGUE, FLAGSHIP_MIXES, MIXES, itemsIn } from './catalogue.ts'
+import type { NatShop } from './types.ts'
 
 /* ------------------------------------------------------------------ *
  * Morua Junction seed — a virtual mall of Gaborone shops.
@@ -89,6 +91,8 @@ interface SeedStore {
   rating: number
   reviews: number
   cardTarget?: number
+  /** Depth preset from catalogue.ts — extra shelf lines beyond the curated ones. */
+  mix?: string
   openedOn: string
   products: SeedProduct[]
 }
@@ -127,6 +131,7 @@ const STORES: SeedStore[] = [
     rating: 4.8,
     reviews: 312,
     openedOn: '1998-04-12',
+    mix: 'market',
     products: [
       { name: 'Tomatoes, 1kg', blurb: 'Vine-ripened, picked yesterday', price: 22, saZar: 28, kg: 1, icon: '🍅', stock: 40 },
       { name: 'Onions, 2kg', blurb: 'Store your onions somewhere dry and dark', price: 18, saZar: 24, kg: 2, icon: '🧅', stock: 35 },
@@ -175,6 +180,7 @@ const STORES: SeedStore[] = [
     rating: 4.6,
     reviews: 541,
     openedOn: '2003-09-02',
+    mix: 'grocery',
     products: [
       { name: 'Sunflower Cooking Oil 2L', blurb: 'Pressed blend for frying and everyday cooking', price: 89, saZar: 118, kg: 2, icon: '🫗', stock: 40, key: 'cooking-oil-2l' },
       { name: 'Maize Meal 10kg', blurb: 'Fine grind, the everyday 50kg bag halved', price: 128, saZar: 165, kg: 10, icon: '🌽', stock: 30, key: 'maize-meal-10kg' },
@@ -221,6 +227,7 @@ const STORES: SeedStore[] = [
     rating: 4.9,
     reviews: 208,
     openedOn: '2011-02-18',
+    mix: 'bakery',
     products: [
       { name: 'White Loaf', blurb: 'Baked at five in the morning, soft by seven', price: 26, saZar: 34, kg: 0.8, icon: '🍞', stock: 30, key: 'white-loaf' },
       { name: 'Brown Wholemeal Loaf', blurb: 'Stone-ground, no sugar', price: 28, saZar: 37, kg: 0.8, icon: '🍞', stock: 22 },
@@ -265,6 +272,7 @@ const STORES: SeedStore[] = [
     rating: 4.7,
     reviews: 164,
     openedOn: '2016-06-30',
+    mix: 'beverages',
     products: [
       { name: 'Mosi-oa-Tunya Lager 6x355ml', blurb: 'Bottled in Gaborone, on ice', price: 96, saZar: 128, kg: 2.4, icon: '🍺', stock: 24, key: 'mosi-lager-6' },
       { name: 'Thlou 5L', blurb: 'House spirit, 48%', price: 185, saZar: 240, kg: 5, icon: '🥃', stock: 10 },
@@ -309,6 +317,7 @@ const STORES: SeedStore[] = [
     rating: 4.6,
     reviews: 189,
     openedOn: '2014-03-08',
+    mix: 'homeware',
     products: [
       { name: 'Cast Iron Pot 5L', blurb: 'Heavy, pre-seasoned, built to be inherited', price: 385, saZar: 540, kg: 6.5, icon: '🍲', stock: 6, key: 'cast-iron-pot-5l' },
       { name: 'Non-stick Frying Pan 26cm', blurb: 'PFOA-free, induction ready', price: 289, saZar: 395, kg: 1.2, icon: '🍳', stock: 9 },
@@ -353,6 +362,7 @@ const STORES: SeedStore[] = [
     rating: 4.4,
     reviews: 143,
     openedOn: '2018-01-15',
+    mix: 'household',
     products: [
       { name: 'Washing Powder 5kg', blurb: 'Refill bag, save 22% against the box', price: 210, saZar: 285, kg: 5, icon: '🧺', stock: 18, key: 'washing-powder-5kg' },
       { name: 'Dishwashing Liquid 1L', blurb: 'Lemon, refill pouch available', price: 42, saZar: 55, kg: 1, icon: '🧴', stock: 30 },
@@ -398,6 +408,7 @@ const STORES: SeedStore[] = [
     rating: 4.8,
     reviews: 276,
     openedOn: '2017-11-03',
+    mix: 'beauty',
     products: [
       { name: 'Vitamin C Brightening Serum 30ml', blurb: 'Morning and night, under sunscreen', price: 245, saZar: 340, kg: 0.1, icon: '✨', stock: 12, key: 'vitamin-c-serum-30' },
       { name: 'SPF 50 Sunscreen 100ml', blurb: 'No white cast, matte finish', price: 185, saZar: 260, kg: 0.15, icon: '🧴', stock: 18 },
@@ -442,6 +453,7 @@ const STORES: SeedStore[] = [
     rating: 4.5,
     reviews: 121,
     openedOn: '2009-08-20',
+    mix: 'hardware',
     products: [
       { name: 'Cordless Drill 18V with 2 Batteries', blurb: 'Brushless, 13mm chuck, two batteries', price: 1450, saZar: 2190, kg: 2.4, icon: '🔩', stock: 4, key: 'cordless-drill-18v' },
       { name: 'Interior Paint 5L, Matt White', blurb: 'Two coats, low odour', price: 385, saZar: 540, kg: 5.6, icon: '🪣', stock: 11 },
@@ -487,6 +499,7 @@ const STORES: SeedStore[] = [
     rating: 4.7,
     reviews: 198,
     openedOn: '2015-05-22',
+    mix: 'fashion',
     products: [
       { name: 'Maxi Dress — Seswaa Print', blurb: 'Six panels, made in the Kgale atelier', price: 385, saZar: 620, kg: 0.6, icon: '👗', stock: 9, key: 'maxi-dress-seswaa' },
       { name: 'Linen Shirt', blurb: 'Stonewashed, relaxed fit', price: 295, saZar: 480, kg: 0.4, icon: '👔', stock: 12, key: 'linen-shirt' },
@@ -532,6 +545,7 @@ const STORES: SeedStore[] = [
     rating: 4.6,
     reviews: 134,
     openedOn: '2012-10-05',
+    mix: 'footwear',
     products: [
       { name: 'Leather Chelsea Boots', blurb: 'Hand lasted, resoleable', price: 1290, saZar: 2050, kg: 1.8, icon: '🥾', stock: 5, key: 'chelsea-boots' },
       { name: 'Suede Loafers', blurb: 'Soft leather, rubber sole', price: 980, saZar: 1560, kg: 1.2, icon: '👞', stock: 6 },
@@ -575,6 +589,7 @@ const STORES: SeedStore[] = [
     rating: 4.5,
     reviews: 96,
     openedOn: '2019-07-12',
+    mix: 'bags',
     products: [
       { name: 'Canvas Laptop Backpack 15"', blurb: 'Fits a 15-inch laptop, water resistant', price: 640, saZar: 980, kg: 1.1, icon: '🎒', stock: 9, key: 'canvas-backpack-15' },
       { name: 'Leather Tote Bag', blurb: 'Structured, with an inner zip pocket', price: 720, saZar: 1120, kg: 1.3, icon: '👜', stock: 6 },
@@ -618,6 +633,7 @@ const STORES: SeedStore[] = [
     rating: 4.9,
     reviews: 117,
     openedOn: '2001-04-18',
+    mix: 'jewellery',
     products: [
       { name: 'Gold Chain 14kt, 45cm', blurb: 'South African mint, with certificate', price: 3450, saZar: 5600, kg: 0.03, icon: '📿', stock: 4, key: 'gold-chain-14kt' },
       { name: 'Basotho Bead Necklace', blurb: 'Hand-strung glass bead, heritage design', price: 420, saZar: 690, kg: 0.1, icon: '📿', stock: 9 },
@@ -662,6 +678,7 @@ const STORES: SeedStore[] = [
     rating: 4.5,
     reviews: 402,
     openedOn: '2013-07-01',
+    mix: 'mobile',
     products: [
       { name: 'Smartphone 128GB, Dual SIM', blurb: '6.5" display, on the shelf today', price: 2350, saZar: 4150, kg: 0.4, icon: '📱', stock: 7, key: 'smartphone-128gb' },
       { name: 'Smartphone 256GB, 5G', blurb: 'Flagship camera, 90Hz screen', price: 4850, saZar: 8600, kg: 0.45, icon: '📱', stock: 4 },
@@ -706,6 +723,7 @@ const STORES: SeedStore[] = [
     rating: 4.7,
     reviews: 154,
     openedOn: '2016-02-26',
+    mix: 'electronics',
     products: [
       { name: 'Wireless Earbuds, ANC', blurb: 'Noise cancelling, 30-hour case', price: 780, saZar: 1250, kg: 0.15, icon: '🎧', stock: 13, key: 'wireless-earbuds-anc' },
       { name: 'Over-Ear Headphones', blurb: 'Studio tuning, wired or wireless', price: 1450, saZar: 2350, kg: 0.4, icon: '🎧', stock: 7 },
@@ -749,6 +767,7 @@ const STORES: SeedStore[] = [
     rating: 4.8,
     reviews: 168,
     openedOn: '2014-11-19',
+    mix: 'computing',
     products: [
       { name: 'Gaming Laptop 16GB, RTX Graphics', blurb: '144Hz, 1TB SSD, thermal paste done', price: 14500, saZar: 24500, kg: 2.6, icon: '💻', stock: 2, key: 'gaming-laptop-16' },
       { name: 'Office Laptop 8GB, 512GB', blurb: 'Light, quiet, for the road', price: 5200, saZar: 8900, kg: 1.6, icon: '💻', stock: 6, key: 'office-laptop-8' },
@@ -793,6 +812,7 @@ const STORES: SeedStore[] = [
     rating: 4.5,
     reviews: 287,
     openedOn: '2020-02-14',
+    mix: 'accessories',
     products: [
       { name: 'USB-C Cable 2m, 100W', blurb: 'E-marked, charges a laptop', price: 95, saZar: 140, kg: 0.1, icon: '🔌', stock: 60, key: 'usb-c-cable-2m' },
       { name: 'Power Bank 20,000mAh', blurb: 'Two outputs, phone charged five times', price: 420, saZar: 620, kg: 0.45, icon: '🔋', stock: 22, key: 'power-bank-20k' },
@@ -915,6 +935,46 @@ function daysAgoIso(days: number, hour = 9, minute = 0): string {
   return d.toISOString()
 }
 
+
+/**
+ * Expand a shop's shelf. The curated hero lines come first; the depth
+ * preset then tops the shelf up from the catalogue, rotating the pool by
+ * the shop's slug so two shops in the same town do not carry an identical
+ * shelf, while the same line still appears in other towns — which is what
+ * gives Price Guard something honest to compare.
+ */
+function expandShelf(
+  hero: string[],
+  mixName: string,
+  mixes: Record<string, Record<string, number>>,
+  takenInBranch: Set<string>,
+  salt: string,
+): string[] {
+  const chosen: string[] = []
+  const seen = new Set<string>()
+  for (const key of hero) {
+    if (CATALOGUE[key] && !seen.has(key)) {
+      chosen.push(key)
+      seen.add(key)
+    }
+  }
+  const mix = mixes[mixName] ?? {}
+  const offset = [...salt].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 997, 0)
+  for (const [category, want] of Object.entries(mix)) {
+    const pool = itemsIn(category)
+    if (!pool.length) continue
+    let added = 0
+    for (let i = 0; i < pool.length && added < want; i++) {
+      const key = pool[(offset + i) % pool.length]
+      if (seen.has(key) || takenInBranch.has(key)) continue
+      seen.add(key)
+      chosen.push(key)
+      added++
+    }
+  }
+  return chosen
+}
+
 export function seed(force = false): { stores: number; products: number } {
   migrate()
   ensureColumns('stores', {
@@ -992,6 +1052,7 @@ export function seed(force = false): { stores: number; products: number } {
     for (const a of list) aisleFloor.set(a.code, floorCode)
   }
   const floorCounts = new Map<string, number>()
+  const takenInMall = new Set<string>()
 
   for (const s of STORES) {
     const aisle = aisleId.get(s.aisle) ?? null
@@ -1043,6 +1104,46 @@ export function seed(force = false): { stores: number; products: number } {
     )
     const storeId = Number(info.lastInsertRowid)
     storeIds.set(s.slug, storeId)
+
+    const shelfKeys = expandShelf(
+      s.products.map((p) => p.key ?? '').filter(Boolean),
+      s.mix ?? 'general',
+      FLAGSHIP_MIXES,
+      takenInMall,
+      s.slug,
+    )
+    for (const key of shelfKeys) {
+      if (!key) continue
+      const item = CATALOGUE[key]
+      if (!item) continue
+      takenInMall.add(key)
+      const listed = round2(item.price)
+      insProduct.run(
+        `MJ-${String(seq++).padStart(5, '0')}`,
+        storeId,
+        item.name,
+        item.blurb,
+        key,
+        item.category,
+        item.unit ?? 'each',
+        item.icon,
+        listed,
+        null,
+        item.zar,
+        item.kg,
+        dutyForCategory(item.category),
+        item.category === 'Fresh Produce & Butchery' ? 'Local \u2014 Botswana' : 'Imported',
+        item.stock,
+        daysAgoIso(Math.floor((seq * 7) % 180), 7, 15),
+        round2(4.1 + ((seq * 5) % 8) / 10),
+        3 + ((seq * 3) % 90),
+        12 + ((seq * 11) % 300),
+        0,
+        null,
+        JSON.stringify(['gaborone']),
+      )
+      productCount++
+    }
 
     for (const p of s.products) {
       const category = aisleNameToCategory(s.aisle)
@@ -1133,7 +1234,16 @@ export function seed(force = false): { stores: number; products: number } {
     )
     storeIds.set(branch.hub.slug, Number(hubInfo.lastInsertRowid))
 
+    const takenInBranch = new Set<string>()
     branch.shops.forEach((sh, i) => {
+      const shelf = expandShelf(
+        sh.items ?? [],
+        sh.mix ?? 'general',
+        MIXES,
+        takenInBranch,
+        sh.slug,
+      )
+      shelf.forEach((k) => takenInBranch.add(k))
       const col = i % 4
       const row = Math.floor(i / 4)
       const unitX = 0.12 + col * 0.253
@@ -1178,8 +1288,8 @@ export function seed(force = false): { stores: number; products: number } {
       const storeId = Number(info.lastInsertRowid)
       storeIds.set(sh.slug, storeId)
 
-      for (const key of sh.items) {
-        const item = LIBRARY[key]
+      for (const key of shelf) {
+        const item = CATALOGUE[key]
         if (!item) continue
         const price = round2(item.price * branch.factor)
         const onSpecial = (seq + key.length) % 7 === 0
