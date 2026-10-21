@@ -92,6 +92,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       <main>{children}</main>
 
+      {/* Mobile tab bar — the PWA's bottom navigation on a phone. */}
+      <nav className="tabbar" aria-label="Primary">
+        {[
+          { to: '/', label: 'Concourse', icon: '🏛️' },
+          { to: '/map', label: 'Map', icon: '🗺️' },
+          { to: '/shop', label: 'Shops', icon: '🏬' },
+          { to: '/basket', label: 'Basket', icon: '🧺', badge: count },
+        ].map((t) => (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            end={t.to === '/'}
+            className={({ isActive }) => (isActive ? 'active' : '')}
+          >
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
+            {t.badge ? <span className="tab-badge">{t.badge}</span> : null}
+          </NavLink>
+        ))}
+      </nav>
+
       <footer className="footer">
         <div className="wrap">
           <div className="footer-grid">
