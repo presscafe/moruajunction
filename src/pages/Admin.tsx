@@ -362,9 +362,12 @@ export default function Admin() {
             {data.balances.map((b) => (
               <div key={b.account} className="card">
                 <div className="tiny muted">{b.account.replace(/_/g, ' ')}</div>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>{pula(b.balance)}</div>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>
+                  {pula(Math.abs(b.balance))}
+                </div>
                 <div className="tiny muted">
-                  debit {pulaShort(b.debit)} · credit {pulaShort(b.credit)}
+                  {b.balance >= 0 ? 'Debit balance' : 'Credit balance'} · Dr {pulaShort(b.debit)} · Cr{' '}
+                  {pulaShort(b.credit)}
                 </div>
               </div>
             ))}

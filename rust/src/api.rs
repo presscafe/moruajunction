@@ -579,66 +579,94 @@ async fn aisle_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
     }))
 }
 
-async fn walk(State(state): S) -> Json<Value> {
+async fn walk(
+    State(state): S,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Json<Value> {
     let conn = state.db.lock().unwrap();
     let stores = rows(&conn, "SELECT * FROM stores", &[]);
+    let aisles = rows(&conn, "SELECT id, floor_id FROM aisles", &[]);
+
+    // Each pavilion has its own hub, so walking times are measured inside the
+    // town you are actually in.
+    let mut aisle_floor: Vec<(i64, i64)> = Vec::new();
+    for a in &aisles {
+        let aid = a.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let fid = a.get("floor_id").and_then(|v| v.as_i64()).unwrap_or(0);
+        aisle_floor.push((aid, fid));
+    }
+    let floor_of = |aisle_id: Option<i64>| -> i64 {
+        let aid = match aisle_id {
+            Some(v) => v,
+            None => return 0,
+        };
+        aisle_floor
+            .iter()
+            .find(|(a, _)| *a == aid)
+            .map(|(_, f)| *f)
+            .unwrap_or(0)
+    };
+    let mut hubs: Vec<(i64, f64, f64)> = Vec::new();
+    for s in &stores {
+        if s.get("kind").and_then(|v| v.as_str()).unwrap_or("") != "hub" {
+            continue;
+        }
+        let fid = floor_of(s.get("aisle_id").and_then(|v| v.as_i64()));
+        let x = s.get("unit_x").and_then(|v| v.as_f64()).unwrap_or(0.5);
+        let y = s.get("unit_y").and_then(|v| v.as_f64()).unwrap_or(0.5);
+        hubs.push((fid, x, y));
+    }
+    let hub_for = |fid: i64| -> (f64, f64) {
+        hubs.iter()
+            .find(|(f, _, _)| *f == fid)
+            .map(|(_, x, y)| (*x, *y))
+            .unwrap_or((0.5, 0.5))
+    };
     let coords: Vec<(f64, f64)> = stores
         .iter()
         .map(|s| {
-            let area = s.get("area").and_then(|v| v.as_str()).unwrap_or("");
+            let fid = floor_of(s.get("aisle_id").and_then(|v| v.as_i64()));
+            let hub = hub_for(fid);
             let ux = s.get("unit_x").and_then(|v| v.as_f64()).unwrap_or(0.5);
             let uy = s.get("unit_y").and_then(|v| v.as_f64()).unwrap_or(0.5);
-            let base = match area {
-                "Gaborone Central" => (0.50, 0.50),
-                "Block B" => (0.58, 0.44),
-                "Kgale" => (0.38, 0.56),
-                "Extension 10" => (0.30, 0.42),
-                "Gaborone West" => (0.22, 0.50),
-                "Village" => (0.42, 0.38),
-                "Phakalane" => (0.33, 0.34),
-                "Gaborone North" => (0.50, 0.24),
-                "Ramokgwebana" => (0.56, 0.18),
-                "Tlokweng" => (0.20, 0.66),
-                "Motswedi" => (0.64, 0.62),
-                _ => (0.5, 0.5),
-            };
-            (base.0 + ux * 0.02, base.1 + uy * 0.02)
+            (hub.0 + (ux - hub.0) * 0.06, hub.1 + (uy - hub.1) * 0.06)
         })
         .collect();
-    let hub = (0.5, 0.5);
-    let minutes = |a: (f64, f64), b: (f64, f64)| -> i64 {
+    let walk_minutes = |a: (f64, f64), b: (f64, f64)| -> i64 {
         let km = ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2)).sqrt() * 22.0;
         ((km / 4.5) * 60.0).round().max(1.0) as i64
     };
-    let from: Vec<Value> = stores
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            let c = coords[i];
-            let times: Map<String, Value> = stores
-                .iter()
-                .enumerate()
-                .map(|(j, o)| {
-                    let slug = o.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    (slug, json!(minutes(c, coords[j])))
-                })
-                .collect();
-            json!({
-                "slug": s.get("slug").and_then(|v| v.as_str()).unwrap_or(""),
-                "name": s.get("name").and_then(|v| v.as_str()).unwrap_or(""),
-                "unit_label": s.get("unit_label").and_then(|v| v.as_str()).unwrap_or(""),
-                "minutesFromHub": minutes(c, hub),
-                "minutesTo": Value::Object(times),
-            })
-        })
-        .collect();
-    Json(json!({"from": from}))
-}
 
-/// Every delivery zone the Junction serves, for the area picker.
-async fn areas(State(_state): S) -> Json<Value> {
-    let list: Vec<&str> = crate::pricing::ZONES.iter().map(|(name, _)| *name).collect();
-    Json(json!({"areas": list}))
+    let focus = params.get("from").cloned();
+    let mut out: Vec<Value> = Vec::new();
+    for (i, s) in stores.iter().enumerate() {
+        let slug = s.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if let Some(f) = &focus {
+            if slug != *f {
+                continue;
+            }
+        }
+        let c = coords[i];
+        let times: Map<String, Value> = stores
+            .iter()
+            .enumerate()
+            .map(|(j, o)| {
+                let oslug = o.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                (oslug, json!(walk_minutes(c, coords[j])))
+            })
+            .collect();
+        let fid = floor_of(s.get("aisle_id").and_then(|v| v.as_i64()));
+        let hub = hub_for(fid);
+        out.push(json!({
+            "slug": slug,
+            "name": s.get("name").and_then(|v| v.as_str()).unwrap_or(""),
+            "town": s.get("town").and_then(|v| v.as_str()).unwrap_or("Gaborone"),
+            "unit_label": s.get("unit_label").and_then(|v| v.as_str()).unwrap_or(""),
+            "minutesFromHub": walk_minutes(c, hub),
+            "minutesTo": Value::Object(times),
+        }));
+    }
+    Json(json!({"from": out}))
 }
 
 async fn providers(State(state): S) -> Json<Value> {
@@ -1157,7 +1185,12 @@ async fn advance_order(
             );
         }
     }
-    Json(json!({"ok": true, "status": to}))
+    let updated = row(
+        &conn,
+        "SELECT * FROM orders WHERE id = ?1",
+        args(&[&id as &dyn ToSql]),
+    );
+    Json(json!({"ok": true, "status": to, "order": updated}))
 }
 
 /* ------------------------------------------------------------------ *
