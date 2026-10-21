@@ -528,7 +528,7 @@ function MarkupEditor({
     setBusy(`markup-${selected.id}`)
     try {
       await api.post(`/admin/stores/${selected.id}/markup`, {
-        markup_pct: Number(pct),
+        markupPct: Number(pct),
         note,
         actor: 'Mall Admin',
       })

@@ -102,7 +102,7 @@ function SellerConsole({ slug }: { slug: string }) {
     try {
       await api.post(`/seller/${slug}/products`, {
         id: product.id,
-        price_pula: Number(price),
+        pricePula: Number(price),
       })
       setEditing(null)
       load()
@@ -130,10 +130,11 @@ function SellerConsole({ slug }: { slug: string }) {
   async function toggleSpecial(product: Product) {
     setBusy(`special-${product.id}`)
     try {
-      await api.post(`/seller/${slug}/special`, {
-        id: product.id,
-        special: product.is_special ? 0 : 1,
-      })
+      await api.post(`/seller/${slug}/special`,
+        product.is_special
+          ? { productId: product.id, clear: true }
+          : { productId: product.id, specialPula: Math.round(product.price_pula * 0.9 * 100) / 100 },
+      )
       load()
       say(product.is_special ? `${product.name} is off special` : `${product.name} is on special`)
     } catch (e: any) {

@@ -85,6 +85,20 @@ async fn cors(
  * Helpers
  * ------------------------------------------------------------------ */
 
+/// Read a field under either a camelCase or a snake_case key, so the API
+/// accepts both conventions from the storefront and from scripts.
+fn field<'a>(value: &'a Value, camel: &str, snake: &str) -> Option<&'a Value> {
+    value.get(camel).or_else(|| value.get(snake))
+}
+
+fn str_field<'a>(value: &'a Value, camel: &str, snake: &str) -> Option<&'a str> {
+    field(value, camel, snake).and_then(|v| v.as_str())
+}
+
+fn num_field(value: &Value, camel: &str, snake: &str) -> Option<f64> {
+    field(value, camel, snake).and_then(|v| v.as_f64())
+}
+
 fn args<'a, 'b>(params: &'a [&'b dyn ToSql]) -> &'a [&'b dyn ToSql] {
     params
 }
@@ -663,7 +677,10 @@ fn build_quote(
     let mut out: Vec<QuoteLine> = Vec::new();
     if let Some(arr) = lines.as_array() {
         for line in arr {
-            let pid = line.get("productId").and_then(|v| v.as_i64()).unwrap_or(0);
+            let pid = field(line, "productId", "product_id")
+                .and_then(|v| v.as_i64())
+                .or_else(|| line.get("id").and_then(|v| v.as_i64()))
+                .unwrap_or(0);
             let qty = line.get("qty").and_then(|v| v.as_f64()).unwrap_or(1.0).floor() as i64;
             let qty = qty.clamp(1, 50);
             let product = match row(
@@ -801,16 +818,15 @@ async fn cart_quote(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         .get("fulfilment")
         .and_then(|v| v.as_str())
         .unwrap_or("delivery");
-    let lines = body.get("lines").cloned().unwrap_or(json!([]));
+    let lines = field(&body, "lines", "items").cloned().unwrap_or(json!([]));
     let (_, quote) = build_quote(&conn, &lines, area, fulfilment);
     Json(quote)
 }
 
 async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
     let conn = state.db.lock().unwrap();
-    let area = body
-        .get("area")
-        .and_then(|v| v.as_str())
+    let area = str_field(&body, "customerArea", "customer_area")
+        .or_else(|| body.get("area").and_then(|v| v.as_str()))
         .unwrap_or("Gaborone Central")
         .to_string();
     let fulfilment = body
@@ -818,7 +834,7 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         .and_then(|v| v.as_str())
         .unwrap_or("delivery")
         .to_string();
-    let lines = body.get("lines").cloned().unwrap_or(json!([]));
+    let lines = field(&body, "lines", "items").cloned().unwrap_or(json!([]));
     let (quote_lines, quote) = build_quote(&conn, &lines, &area, &fulfilment);
 
     if quote_lines.is_empty() {
@@ -838,14 +854,10 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
     let stamp = now_iso();
     let serial = (crate::timeutil::now_nanos() % 900_000) as i64 + 1000;
     let code = format!("MJ-{}-{}", &stamp[0..4], serial);
-    let customer_name = body
-        .get("customerName")
-        .and_then(|v| v.as_str())
+    let customer_name = str_field(&body, "customerName", "customer_name")
         .unwrap_or("Guest")
         .to_string();
-    let customer_phone = body
-        .get("customerPhone")
-        .and_then(|v| v.as_str())
+    let customer_phone = str_field(&body, "customerPhone", "customer_phone")
         .unwrap_or("+267 000 0000")
         .to_string();
     let address = body
@@ -1231,12 +1243,14 @@ async fn seller_save_product(
     let product_id = body.get("id").and_then(|v| v.as_i64());
     let name = body.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let blurb = body.get("blurb").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let price = body.get("pricePula").and_then(|v| v.as_f64());
-    let stock = body.get("stock").and_then(|v| v.as_i64());
+    let price = num_field(&body, "pricePula", "price_pula");
+    let stock = field(&body, "stock", "stock")
+        .and_then(|v| v.as_i64())
+        .or_else(|| field(&body, "stock", "stock").and_then(|v| v.as_f64()).map(|f| f as i64));
     let unit = body.get("unit").and_then(|v| v.as_str()).unwrap_or("each").to_string();
     let icon = body.get("icon").and_then(|v| v.as_str()).unwrap_or("📦").to_string();
-    let sa_zar = body.get("saPriceZar").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let weight = body.get("weightKg").and_then(|v| v.as_f64()).unwrap_or(0.5);
+    let sa_zar = num_field(&body, "saPriceZar", "sa_price_zar").unwrap_or(0.0);
+    let weight = num_field(&body, "weightKg", "weight_kg").unwrap_or(0.5);
 
     if let Some(pid) = product_id {
         exec(
@@ -1331,7 +1345,10 @@ async fn seller_set_special(
         None => return Json(json!({"error": "Store not found"})),
     };
     let id = store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
-    let pid = body.get("productId").and_then(|v| v.as_i64()).unwrap_or(0);
+    let pid = field(&body, "productId", "product_id")
+        .and_then(|v| v.as_i64())
+        .or_else(|| body.get("id").and_then(|v| v.as_i64()))
+        .unwrap_or(0);
     if body.get("clear").and_then(|v| v.as_bool()).unwrap_or(false) {
         exec(
             &conn,
@@ -1339,7 +1356,7 @@ async fn seller_set_special(
             args(&[&pid as &dyn ToSql, &id as &dyn ToSql]),
         );
     } else {
-        let special = body.get("specialPula").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let special = num_field(&body, "specialPula", "special_pula").unwrap_or(0.0);
         exec(
             &conn,
             "UPDATE products SET is_special = 1, special_pula = ?1 WHERE id = ?2 AND store_id = ?3",
@@ -1551,9 +1568,7 @@ async fn admin_markup(
     Json(body): Json<Value>,
 ) -> Json<Value> {
     let conn = state.db.lock().unwrap();
-    let markup = body
-        .get("markupPct")
-        .and_then(|v| v.as_f64())
+    let markup = num_field(&body, "markupPct", "markup_pct")
         .unwrap_or(0.0)
         .clamp(0.0, 25.0);
     let note = body

@@ -117,7 +117,7 @@ export default function App() {
       setQuoting(true)
       api
         .post<Quote>('/cart/quote', {
-          items: lines.map((l) => ({ product_id: l.productId, qty: l.qty })),
+          lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
           area: target,
           fulfilment,
         })

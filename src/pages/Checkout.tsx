@@ -40,14 +40,14 @@ export default function Checkout() {
     setError(null)
     try {
       const order = await api.post<{ code: string }>('/orders', {
-        customer_name: name,
-        customer_phone: phone,
-        customer_area: area,
+        customerName: name,
+        customerPhone: phone,
+        customerArea: area,
         address: address || area,
         notes,
         payment_method: payment,
         fulfilment,
-        items: lines.map((l) => ({ product_id: l.productId, qty: l.qty })),
+        lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
       })
       clear()
       navigate(`/order/${order.code}`)
