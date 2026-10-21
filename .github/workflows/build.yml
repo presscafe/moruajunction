@@ -54,13 +54,13 @@ jobs:
         if: failure()
         run: |
           mkdir -p ../diagnostics
-          cp rust/cargo-test.log ../diagnostics/cargo-test.log 2>/dev/null || true
-          cp rust/cargo-build.log ../diagnostics/cargo-build.log 2>/dev/null || true
+          cp cargo-test.log ../diagnostics/cargo-test.log 2>/dev/null || true
+          cp cargo-build.log ../diagnostics/cargo-build.log 2>/dev/null || true
           cd ..
           git config user.name "morua-ci"
           git config user.email "morua-ci@users.noreply.github.com"
           git checkout -B ci/diagnostics
-          git add -f diagnostics || true
+          git add -A diagnostics || true
           git commit -m "cargo diagnostics" || true
           git push origin ci/diagnostics --force || true
 
