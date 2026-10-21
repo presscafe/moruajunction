@@ -116,8 +116,18 @@ The storefront registers `/sw.js` in production only. It:
   network returns;
 * serves `/offline.html` when a navigation has no network and no cache.
 
-**Money is never cached.** Order creation, checkout and the admin console are
+Underneath the service worker there is a second layer: `src/lib/offline.ts`
+writes every catalogue read to **IndexedDB**, and the API client falls back to
+it when the network is gone. A shopper who opens the mall on a train with no
+signal still finds the shop, the price and the basket they built. The header
+bar says so plainly — *you are offline* or *showing saved prices*.
+
+**Money is never cached.** Only GET reads of public catalogue data are
+written to IndexedDB. Order creation, checkout and the admin console are
 POSTs and are always live.
+
+To clear the device cache from the app, call `clearCache()` from
+`src/lib/offline.ts`.
 
 Bump `VERSION` in `public/sw.js` when you change the shell, or users will keep
 the old one.

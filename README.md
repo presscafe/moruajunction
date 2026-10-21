@@ -7,13 +7,26 @@ delivered by a rider you can name, or collected today.
 
 Every product on Morua Junction is already inside Botswana.
 
-```
-Gaborone · Francistown · Lobatse · Kanye · Serowe · Mahalapye · Mochudi
-Palapye · Letlhakeng · Tsabong · Ghanzi · Selebi Phikwe · Maun · Kasane
-Tsumeb · Nata · Mogoditshane · Tlokweng
-```
+**40 towns. 138 shops. 2,919 products. Every district of the country.**
 
-72 shops · 381 products · 18 towns · every district of the country.
+| District | Towns on the Junction |
+|---|---|
+| Central | Gaborone · Mmabatho · Sowa |
+| Kweneng | Gabane · Letlhakeng · Mochudi · Mogoditshane · Moshupa · Oodi · Otse · Ramokgwebana · Silume · Tlokweng |
+| North-East | Berea · Francistown · Matsieng · Orapa · Selebi Phikwe · Tutume |
+| North-West | Durabans · Gweta · Kasane · Kazungula · Maun · Nata · Shakawe |
+| South-East | Good Hope · Kanye · Tswapong |
+| Southern | Mahalapye · Palapye · Pitsani |
+| South-Central | Serowe · Sipholokwe |
+| Kgatleng | Lobatse |
+| Ghanzi | Mooka · Tsabong |
+| Kgalagadi | Ghanzi · Mababe |
+| Zambezi | Tsumeb |
+
+Gaborone is the flagship: five floors, nineteen aisles, sixteen shops and the
+central hub. Every other town gets a **pavilion** — its own floor, its own
+aisles, its own branch hub and its own delivery zone, on the same platform,
+the same ledger and the same promise.
 
 ---
 
@@ -23,7 +36,7 @@ Tsumeb · Nata · Mogoditshane · Tlokweng
 |---|---|
 | **Concourse** | The main hall: the day's specials, the floor directory, the towns. |
 | **Mall Map™** | The God's-eye view. Every pavilion is drawn from directly above — the hub at the centre, each shop in its real unit, and your walk from the hub to it. |
-| **Aisles** | Groceries, Fresh Produce, Bakery, Hardware, Fashion, Mobile, Tourism, Mining, Farm — 56 aisles across 22 floors. |
+| **Aisles** | Groceries, Fresh Produce, Bakery, Hardware, Fashion, Mobile, Tourism, Mining, Farm — 100 aisles across 44 floors, in thirty trading categories. |
 | **Storefronts** | Every shop has its own storefront: a themed unit, the story of the business, the people who work there, hours, returns, delivery promise and its reviews. |
 | **One Basket, Many Shops™** | Buy from five shops, pay one delivery fee, receive one receipt. |
 | **Escrow & Return-to-Shop™** | The money is held until you confirm the goods arrived. If something is wrong it goes back to the shop that sold it, not to a courier depot. |
@@ -90,9 +103,12 @@ rust/
   seed/morua.json   the dataset, embedded in the binary
 ```
 
-**The storefront is a Vite + React + TypeScript PWA**, offline-first: the shell
-is precached, catalogue reads are served stale-while-revalidate, and money
-never touches the cache.
+**The storefront is a Vite + React + TypeScript PWA**, offline-first in two
+layers: the service worker precaches the shell and serves catalogue reads
+stale-while-revalidate, and every read is *also* written to IndexedDB — so a
+shopper with no signal still finds the shop they walked into, the price they
+agreed and the basket they built. The app tells you when it is serving saved
+prices. Money never touches the cache: an order needs a connection.
 
 ```
 src/
@@ -102,10 +118,24 @@ src/
   lib/        typed API client, formatting
 ```
 
-**The dataset is authored in TypeScript** (`server/seed.ts`, `server/national.ts`)
-and compiled to `rust/seed/morua.json`, which the Rust service embeds. The
-seed script is the only place that writes the catalogue; the Rust service
-reads it.
+**The dataset is authored in TypeScript** and compiled to
+`rust/seed/morua.json`, which the Rust service embeds. The seed script is the
+only place that writes the catalogue; the Rust service reads it.
+
+```
+server/
+  catalogue.ts          420 shelf lines in 30 categories — the shared library
+  national.ts           the 17 flagship pavilions, written out in full
+  national-branches.ts  the other 23 branches, expanded by the same builder
+  seed.ts               the seeder: Gaborone's flagship floor plan + the network
+  types.ts              shared catalogue types
+```
+
+A shop keeps its curated hero lines and tops its shelf up from a **depth
+preset**, rotating the pool by the shop's slug — so two shops in one town do
+not carry an identical shelf, while the same line still appears in other
+towns. That is what gives Price Guard something honest to compare: the price
+of an onion in Tsumeb, in Gabane, in Kasane and in Pitsani, side by side.
 
 ---
 
@@ -184,10 +214,10 @@ product decisions are in [`docs/product-spec.md`](docs/product-spec.md).
 ## Status
 
 * [x] Virtual mall: floors, aisles, units, themed storefronts, God's-eye plan
-* [x] 18 towns, every district, 72 shops, 381 products
+* [x] 40 towns, every district, 138 shops, 2,919 products, 100 aisles, 44 floors
 * [x] Admin approves shop managers, sets the markup, chooses the delivery provider
 * [x] Land Local™, Price Guard™, Pula Promise™, Keeper's Ledger™, Live Shelf™, Store Card™, One Basket Many Shops™, Escrow & Return-to-Shop™
-* [x] Offline-first PWA storefront
+* [x] Offline-first PWA: service worker plus an IndexedDB catalogue layer
 * [x] Rust API, free-tier deployment configs
 
 ## Licence

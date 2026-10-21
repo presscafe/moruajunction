@@ -169,7 +169,7 @@ recommendation that was never adopted.
 | D1 | Seller-only pricing; admin must never reprice (C-2) | **The admin sets a markup on shop managers' prices** | The admin applies a levy of 0–25 % to a shop's own price. It is applied at quote time, shown to the shopper as a mall levy, paid to the shop, clamped, written to the audit trail, and the seller is notified with the reason. The admin cannot edit a seller's own price — only add a declared levy on top of it. |
 | D3 | One contracted delivery partner; no auction (C-4) | **The admin chooses the delivery provider for each order** | Five registered providers (vans, motorbikes, e-scooters, national freight, route riders). The admin assigns one per order, names the rider, and the shopper sees the name on the tracking screen. No bidding, no race to the bottom. |
 | D6 | TypeScript monolith (H-7) | **Rust as far as it goes** | One Rust binary (axum + tokio + SQLite) is the only backend. The remaining TypeScript is the dataset toolkit that compiles the catalogue into the JSON the binary embeds. The storefront is a Vite + React PWA. |
-| D4 | One area, two categories (C-7) | **All of Botswana, every district** | 18 towns, 22 floors, 56 aisles, 72 shops, 381 products, 52 delivery zones from Gaborone Central (P25) to Kasane (P380). |
+| D4 | One area, two categories (C-7) | **All of Botswana, every district** | 40 towns, 44 floors, 100 aisles, 138 shops, 2,919 products drawn from a shared catalogue of 420 shelf lines in 30 categories, 52 delivery zones from Gaborone Central (P25) to Kasane (P380). |
 | C-3 | Risk-based approval, not a liquidity tax | **The admin approves every shop manager** | No shop trades until approved. Pending shops stay visible in the directory and badged *awaiting approval*, so the queue is transparent rather than hidden. Three seeded shops start pending so the queue is real on day one. |
 
 ### 4.1 What did not change
@@ -189,6 +189,14 @@ The audit's reasoning survives the overrides in the ways that matter:
 * **Audit trail on every admin action** — who, when, why.
 * **Data Protection Act 18 of 2024**: 72-hour breach clock, DPIA, and no
   cross-border transfer of shopper data by default.
+
+### 4.3 The offline guarantee
+
+The storefront is offline-first in two layers: the service worker precaches the
+shell and serves catalogue reads stale-while-revalidate, and every read is
+also written to IndexedDB so the app can answer without a network at all. The
+shopper is told which they are getting. Money is never cached — an order
+needs a connection, and the app says so.
 
 ### 4.2 Open items that remain open
 

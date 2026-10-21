@@ -265,19 +265,16 @@ export default function Concourse() {
             title="Eighteen towns, one platform"
             lede="The Junction is not one building. Each town has its own pavilion, its own branch hub and its own delivery zone — and the same prices, ledger and promise everywhere."
           />
-          <div className="grid grid-3">
+          <div className="town-grid">
             {storesByTown.map(([town, stores]) => (
-              <Link key={town} to={`/shop?town=${encodeURIComponent(town)}`} className="card card-hover">
-                <div className="row-between">
-                  <span className="strong">{town}</span>
-                  <Badge tone="violet">{stores.length} shops</Badge>
-                </div>
-                <p className="tiny muted" style={{ margin: '0.5rem 0 0' }}>
-                  {stores
-                    .slice(0, 3)
-                    .map((s) => s.name)
-                    .join(' · ')}
-                </p>
+              <Link
+                key={town}
+                to={`/shop?town=${encodeURIComponent(town)}`}
+                className="town-chip"
+                title={stores.map((s) => s.name).join(' · ')}
+              >
+                <span className="town-name">{town}</span>
+                <span className="town-count">{stores.length}</span>
               </Link>
             ))}
           </div>
