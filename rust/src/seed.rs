@@ -122,8 +122,9 @@ fn load_dataset(conn: &Db) {
 
     for f in arr("floors") {
         let _ = conn.execute(
-            "INSERT INTO floors (code, name, tagline, town, sort) VALUES (?1,?2,?3,?4,?5)",
+            "INSERT INTO floors (id, code, name, tagline, town, sort) VALUES (?1,?2,?3,?4,?5,?6)",
             params![
+                f.get("id").and_then(|v| v.as_i64()).unwrap_or(0),
                 f.get("code").and_then(|v| v.as_str()).unwrap_or(""),
                 f.get("name").and_then(|v| v.as_str()).unwrap_or(""),
                 f.get("tagline").and_then(|v| v.as_str()).unwrap_or(""),
@@ -143,8 +144,9 @@ fn load_dataset(conn: &Db) {
             )
             .unwrap_or(0);
         let _ = conn.execute(
-            "INSERT INTO aisles (floor_id, code, name, blurb, sort) VALUES (?1,?2,?3,?4,?5)",
+            "INSERT INTO aisles (id, floor_id, code, name, blurb, sort) VALUES (?1,?2,?3,?4,?5,?6)",
             params![
+                a.get("id").and_then(|v| v.as_i64()).unwrap_or(0),
                 floor_id,
                 a.get("code").and_then(|v| v.as_str()).unwrap_or(""),
                 a.get("name").and_then(|v| v.as_str()).unwrap_or(""),
@@ -160,14 +162,14 @@ fn load_dataset(conn: &Db) {
         let i = |k: &str| s.get(k).and_then(|v| v.as_i64()).unwrap_or(0);
         let aisle_id = s.get("aisle_id").and_then(|v| v.as_i64());
         let _ = conn.execute(
-            "INSERT INTO stores (slug, name, aisle_id, kind, tagline, story, accent, accent_soft, icon, banner,
+            "INSERT INTO stores (id, slug, name, aisle_id, kind, tagline, story, accent, accent_soft, icon, banner,
                 area, address, phone, hours, return_policy, delivery_promise, verified_status, verified_at,
                 verified_by, rating, review_count, fulfilment_accuracy, median_prep_minutes, tags, staff, sections,
                 card_stamps, card_target, town, district, region, unit_label, unit_x, unit_y, opened_on,
                 approval_status, approved_at, approved_by)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38)",
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38,?39)",
             params![
-                g("slug"), g("name"), aisle_id, g("kind"), g("tagline"), g("story"), g("accent"), g("accent_soft"),
+                i("id"), g("slug"), g("name"), aisle_id, g("kind"), g("tagline"), g("story"), g("accent"), g("accent_soft"),
                 g("icon"), g("banner"), g("area"), g("address"), g("phone"), g("hours"), g("return_policy"),
                 g("delivery_promise"), g("verified_status"), g("verified_at"), g("verified_by"), n("rating"),
                 i("review_count"), n("fulfilment_accuracy"), i("median_prep_minutes"), g("tags"), g("staff"),
@@ -239,5 +241,69 @@ fn load_dataset(conn: &Db) {
                 p.get("ends_at").and_then(|v| v.as_str()).unwrap_or("")
             ],
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The dataset points at shops and aisles by id, and the seeder has to
+    /// keep those ids. When SQLite was left to number the rows itself, the
+    /// stores and aisles were renumbered by array position while the
+    /// products still carried the dataset ids — so every product landed on
+    /// the wrong shelf and every shop stood in the wrong aisle.
+    #[test]
+    fn seed_keeps_the_dataset_ids() {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory database");
+        crate::schema::migrate(&conn);
+        seed(&conn);
+
+        // Product 1 is "Onions 1kg", and it lives in Bonwadi Fresh Market.
+        let shop: String = conn
+            .query_row(
+                "SELECT s.name FROM products p JOIN stores s ON s.id = p.store_id WHERE p.id = 1",
+                [],
+                |r| r.get(0),
+            )
+            .expect("product 1 belongs to a shop");
+        assert_eq!(shop, "Bonwadi Fresh Market");
+
+        // Every product sits in a shop that exists.
+        let orphans: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM products p
+                 LEFT JOIN stores s ON s.id = p.store_id WHERE s.id IS NULL",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        assert_eq!(orphans, 0, "every product must belong to a real shop");
+
+        // Every shop stands in an aisle that exists, on a floor that exists.
+        let stranded: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM stores st
+                 LEFT JOIN aisles a ON a.id = st.aisle_id
+                 LEFT JOIN floors f ON f.id = a.floor_id
+                 WHERE st.aisle_id IS NOT NULL AND (a.id IS NULL OR f.id IS NULL)",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        assert_eq!(stranded, 0, "every shop must stand in a real aisle");
+
+        // The aisle codes are the ones the dataset declares.
+        let code: String = conn
+            .query_row(
+                "SELECT a.code FROM products p
+                 JOIN stores s ON s.id = p.store_id
+                 JOIN aisles a ON a.id = s.aisle_id
+                 WHERE p.id = 1",
+                [],
+                |r| r.get(0),
+            )
+            .expect("product 1 stands in an aisle");
+        assert_eq!(code, "A1");
     }
 }
