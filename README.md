@@ -158,9 +158,15 @@ providers, 3 shops in the approval queue.
 
 ```bash
 npm install
-npm run dev        # Vite on :5173, proxying /api to :8787
+npm run dev        # cargo run (API on :8787) + Vite on :5173 proxying /api
 npm run typecheck
 npm run build      # static bundle in dist/public
+```
+
+Rebuilding the dataset after editing the catalogue:
+
+```bash
+npm run dataset    # re-seeds and writes rust/seed/morua.json
 ```
 
 Point the storefront at a hosted API with `VITE_API_BASE`:
