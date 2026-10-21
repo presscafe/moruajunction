@@ -10,7 +10,8 @@ pub fn migrate(conn: &Connection) {
 
         CREATE TABLE IF NOT EXISTS floors (
             id INTEGER PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
-            tagline TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
+            tagline TEXT NOT NULL, town TEXT NOT NULL DEFAULT 'Gaborone',
+            sort INTEGER NOT NULL DEFAULT 0);
 
         CREATE TABLE IF NOT EXISTS aisles (
             id INTEGER PRIMARY KEY, floor_id INTEGER NOT NULL REFERENCES floors(id),
@@ -28,6 +29,8 @@ pub fn migrate(conn: &Connection) {
             median_prep_minutes INTEGER NOT NULL DEFAULT 90, tags TEXT NOT NULL DEFAULT '[]',
             staff TEXT NOT NULL DEFAULT '[]', sections TEXT NOT NULL DEFAULT '[]',
             card_stamps INTEGER NOT NULL DEFAULT 0, card_target INTEGER NOT NULL DEFAULT 8,
+            town TEXT NOT NULL DEFAULT 'Gaborone', district TEXT NOT NULL DEFAULT 'Central',
+            region TEXT NOT NULL DEFAULT 'South-East',
             unit_label TEXT NOT NULL DEFAULT '', unit_x REAL NOT NULL DEFAULT 0.5,
             unit_y REAL NOT NULL DEFAULT 0.5, opened_on TEXT NOT NULL,
             approval_status TEXT NOT NULL DEFAULT 'pending', approval_note TEXT NOT NULL DEFAULT '',
@@ -126,6 +129,18 @@ pub fn migrate(conn: &Connection) {
                 ("markup_note", "TEXT NOT NULL DEFAULT ''"),
                 ("markup_set_by", "TEXT"),
                 ("markup_set_at", "TEXT"),
+            ],
+        ),
+        (
+            "floors",
+            &[("town", "TEXT NOT NULL DEFAULT 'Gaborone'")],
+        ),
+        (
+            "stores",
+            &[
+                ("town", "TEXT NOT NULL DEFAULT 'Gaborone'"),
+                ("district", "TEXT NOT NULL DEFAULT 'Central'"),
+                ("region", "TEXT NOT NULL DEFAULT 'South-East'"),
             ],
         ),
         (

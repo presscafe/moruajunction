@@ -95,7 +95,7 @@ pub fn recent_entries(conn: &Db, limit: i64) -> Vec<Value> {
     rows(
         conn,
         "SELECT * FROM ledger_entries ORDER BY id DESC LIMIT ?1",
-        &[&limit as &dyn rusqlite::types::ToSqlOutput],
+        &[&limit as &dyn rusqlite::ToSql],
     )
 }
 
@@ -103,6 +103,6 @@ pub fn entries_for_order(conn: &Db, order_id: i64) -> Vec<Value> {
     rows(
         conn,
         "SELECT * FROM ledger_entries WHERE order_id = ?1 ORDER BY id",
-        &[&order_id as &dyn rusqlite::types::ToSqlOutput],
+        &[&order_id as &dyn rusqlite::ToSql],
     )
 }

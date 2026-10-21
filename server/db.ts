@@ -17,6 +17,7 @@ export function migrate() {
     code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     tagline TEXT NOT NULL,
+    town TEXT NOT NULL DEFAULT 'Gaborone',
     sort INTEGER NOT NULL DEFAULT 0
   );
 
@@ -59,6 +60,9 @@ export function migrate() {
     sections TEXT NOT NULL DEFAULT '[]',
     card_stamps INTEGER NOT NULL DEFAULT 0,
     card_target INTEGER NOT NULL DEFAULT 8,
+    town TEXT NOT NULL DEFAULT 'Gaborone',
+    district TEXT NOT NULL DEFAULT 'Central',
+    region TEXT NOT NULL DEFAULT 'South-East',
     unit_label TEXT NOT NULL DEFAULT '',
     unit_x REAL NOT NULL DEFAULT 0.5,
     unit_y REAL NOT NULL DEFAULT 0.5,

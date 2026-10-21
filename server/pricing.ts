@@ -118,25 +118,96 @@ export function dutyForCategory(category: string): number {
   return DUTY_BY_CATEGORY[category] ?? 0.15
 }
 
-/** Gaborone delivery zones, measured from the Morua Junction hub in Gaborone West. */
+/**
+ * Morua Junction delivery zones, measured by road from the Junction hub in
+ * Gaborone West. The first four bands are the Pula Promise metro bands; the
+ * rest carry the national road rates out to the far districts.
+ */
 export interface Zone {
   area: string
   km: number
+  town?: string
 }
 
 export const ZONES: Zone[] = [
-  { area: 'Gaborone Central', km: 3 },
-  { area: 'Block B', km: 5 },
-  { area: 'Kgale', km: 6 },
-  { area: 'Extension 10', km: 7 },
-  { area: 'Gaborone West', km: 8 },
-  { area: 'Village', km: 9 },
-  { area: 'Phakalane', km: 9 },
-  { area: 'Gaborone North', km: 13 },
-  { area: 'Ramokgwebana', km: 14 },
-  { area: 'Tlokweng', km: 16 },
-  { area: 'Motswedi', km: 18 },
+  // Metro — the Pula Promise bands
+  { area: 'Gaborone Central', km: 3, town: 'Gaborone' },
+  { area: 'Block B', km: 5, town: 'Gaborone' },
+  { area: 'Kgale', km: 6, town: 'Gaborone' },
+  { area: 'Extension 10', km: 7, town: 'Gaborone' },
+  { area: 'Gaborone West', km: 8, town: 'Gaborone' },
+  { area: 'Village', km: 9, town: 'Gaborone' },
+  { area: 'Phakalane', km: 9, town: 'Gaborone' },
+  { area: 'Gaborone North', km: 13, town: 'Gaborone' },
+  { area: 'Ramokgwebana', km: 14, town: 'Gaborone' },
+  { area: 'Ramotswa', km: 15, town: 'Gaborone' },
+  { area: 'Mogoditshane', km: 15, town: 'Mogoditshane' },
+  { area: 'Tlokweng', km: 16, town: 'Tlokweng' },
+  { area: 'Motswedi', km: 18, town: 'Gaborone' },
+  { area: 'Gaborone South', km: 19, town: 'Gaborone' },
+  { area: 'Thapong', km: 22, town: 'Gaborone' },
+  { area: 'Mmabatho', km: 25, town: 'Gaborone' },
+  // Southern corridor
+  { area: 'Gabane', km: 40, town: 'Gaborone' },
+  { area: 'Oodi', km: 30, town: 'Gaborone' },
+  { area: 'Mmakau', km: 30, town: 'Gaborone' },
+  { area: 'Mochudi', km: 100, town: 'Mochudi' },
+  { area: 'Kanye', km: 90, town: 'Kanye' },
+  { area: 'Good Hope', km: 100, town: 'Kanye' },
+  { area: 'Tswapong', km: 85, town: 'Kanye' },
+  { area: 'Lobatse', km: 75, town: 'Lobatse' },
+  { area: 'Tsabong', km: 300, town: 'Tsabong' },
+  { area: 'Jwaneng', km: 260, town: 'Tsabong' },
+  { area: 'Ghanzi', km: 250, town: 'Ghanzi' },
+  { area: 'Mababe', km: 200, town: 'Ghanzi' },
+  { area: 'Mooka', km: 100, town: 'Ghanzi' },
+  // Central and southern
+  { area: 'Serowe', km: 220, town: 'Serowe' },
+  { area: 'Sipholokwe', km: 230, town: 'Serowe' },
+  { area: 'Mahalapye', km: 150, town: 'Mahalapye' },
+  { area: 'Palapye', km: 190, town: 'Palapye' },
+  { area: 'Letlhakeng', km: 160, town: 'Letlhakeng' },
+  { area: 'Moshupa', km: 130, town: 'Letlhakeng' },
+  { area: 'Silume', km: 130, town: 'Letlhakeng' },
+  { area: 'Otse', km: 130, town: 'Letlhakeng' },
+  { area: 'Borwa', km: 130, town: 'Palapye' },
+  { area: 'Pitsani', km: 250, town: 'Palapye' },
+  // North-east
+  { area: 'Selebi Phikwe', km: 460, town: 'Selebi Phikwe' },
+  { area: 'Francistown', km: 440, town: 'Francistown' },
+  { area: 'Tsumeb', km: 490, town: 'Tsumeb' },
+  { area: 'Orapa', km: 460, town: 'Tsumeb' },
+  { area: 'Berea', km: 470, town: 'Tsumeb' },
+  { area: 'Tutume', km: 420, town: 'Tsumeb' },
+  { area: 'Nata', km: 600, town: 'Nata' },
+  // North-west
+  { area: 'Maun', km: 900, town: 'Maun' },
+  { area: 'Kasane', km: 1000, town: 'Kasane' },
+  { area: 'Kazungula', km: 1005, town: 'Kasane' },
+  { area: 'Gweta', km: 900, town: 'Maun' },
+  { area: 'Shakawe', km: 950, town: 'Maun' },
+  { area: 'Durabans', km: 920, town: 'Maun' },
 ]
+
+/** Band definitions shared by every zone: label, flat fee and promised window. */
+export interface Band {
+  label: string
+  fee: number
+  etaMin: number
+  etaMax: number
+  freeAbove: number
+}
+
+export function bandFor(km: number): Band {
+  if (km <= 5) return { label: 'Pula Promise · Zone 1 · up to 5 km', fee: 25, etaMin: 60, etaMax: 90, freeAbove: 350 }
+  if (km <= 10) return { label: 'Pula Promise · Zone 2 · 5–10 km', fee: 35, etaMin: 90, etaMax: 150, freeAbove: 350 }
+  if (km <= 20) return { label: 'Pula Promise · Zone 3 · 10–20 km', fee: 50, etaMin: 150, etaMax: 240, freeAbove: 350 }
+  if (km <= 60) return { label: 'Zone 4 · 20–60 km', fee: 120, etaMin: 1440, etaMax: 2880, freeAbove: 600 }
+  if (km <= 120) return { label: 'Zone 5 · 60–120 km', fee: 170, etaMin: 1440, etaMax: 2880, freeAbove: 600 }
+  if (km <= 250) return { label: 'Zone 6 · 120–250 km', fee: 230, etaMin: 2880, etaMax: 4320, freeAbove: 1200 }
+  if (km <= 500) return { label: 'Zone 7 · 250–500 km', fee: 300, etaMin: 4320, etaMax: 7200, freeAbove: 1200 }
+  return { label: 'Zone 8 · beyond 500 km', fee: 380, etaMin: 5760, etaMax: 10080, freeAbove: 1200 }
+}
 
 export interface DeliveryQuote {
   zone: string
@@ -151,58 +222,37 @@ export interface DeliveryQuote {
 }
 
 export function deliveryQuote(area: string, subtotalPula: number): DeliveryQuote {
-  const known = ZONES.find((z) => z.area.toLowerCase() === area.trim().toLowerCase())
+  const wanted = area.trim().toLowerCase()
+  const known =
+    ZONES.find((z) => z.area.toLowerCase() === wanted) ??
+    ZONES.find((z) => wanted.includes(z.area.toLowerCase()) || z.area.toLowerCase().includes(wanted))
   if (!known) {
     return {
-      zone: area || 'Outside Gaborone',
-      km: 40,
-      band: 'Outside Gaborone',
-      feePula: 85,
+      zone: area || 'Outside the network',
+      km: 90,
+      band: 'Zone 5 · 60–120 km',
+      feePula: 170,
       etaMin: 1440,
       etaMax: 2880,
       freeApplied: false,
       available: true,
-      note: 'Next-day courier, quoted at a flat rate',
+      note: 'National road rate for an address outside our listed zones',
     }
   }
-  let band = ''
-  let fee = 0
-  let etaMin = 60
-  let etaMax = 90
-  if (known.km <= 5) {
-    band = 'Zone 1 · up to 5 km'
-    fee = 25
-    etaMin = 60
-    etaMax = 90
-  } else if (known.km <= 10) {
-    band = 'Zone 2 · 5–10 km'
-    fee = 35
-    etaMin = 90
-    etaMax = 150
-  } else if (known.km <= 20) {
-    band = 'Zone 3 · 10–20 km'
-    fee = 50
-    etaMin = 150
-    etaMax = 240
-  } else {
-    band = 'Zone 4 · beyond 20 km'
-    fee = 85
-    etaMin = 1440
-    etaMax = 2880
-  }
-  const freeApplied = subtotalPula >= FREE_DELIVERY_THRESHOLD_PULA
+  const band = bandFor(known.km)
+  const freeApplied = subtotalPula >= band.freeAbove
   return {
     zone: known.area,
     km: known.km,
-    band,
-    feePula: freeApplied ? 0 : fee,
-    etaMin,
-    etaMax,
+    band: band.label,
+    feePula: freeApplied ? 0 : band.fee,
+    etaMin: band.etaMin,
+    etaMax: band.etaMax,
     freeApplied,
     available: true,
     note: freeApplied
-      ? `Delivery is free on baskets over P${FREE_DELIVERY_THRESHOLD_PULA}`
-      : `P${fee} flat, quoted up front — never a surprise at checkout`,
+      ? `Delivery is free on baskets over P${band.freeAbove}`
+      : `P${band.fee} flat, quoted up front — never a surprise at checkout`,
   }
 }
 

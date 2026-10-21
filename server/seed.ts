@@ -1,5 +1,6 @@
 import { db, ensureColumns, isSeeded, migrate } from './db.ts'
 import { dutyForCategory, round2 } from './pricing.ts'
+import { BRANCHES, LIBRARY } from './national.ts'
 
 /* ------------------------------------------------------------------ *
  * Morua Junction seed — a virtual mall of Gaborone shops.
@@ -920,7 +921,11 @@ export function seed(force = false): { stores: number; products: number } {
     unit_label: "TEXT NOT NULL DEFAULT ''",
     unit_x: 'REAL NOT NULL DEFAULT 0.5',
     unit_y: 'REAL NOT NULL DEFAULT 0.5',
+    town: "TEXT NOT NULL DEFAULT 'Gaborone'",
+    district: "TEXT NOT NULL DEFAULT 'Central'",
+    region: "TEXT NOT NULL DEFAULT 'South-East'",
   })
+  ensureColumns('floors', { town: "TEXT NOT NULL DEFAULT 'Gaborone'" })
   if (isSeeded() && !force) {
     const stores = (db.prepare(`SELECT COUNT(*) c FROM stores`).get() as { c: number }).c
     const products = (db.prepare(`SELECT COUNT(*) c FROM products`).get() as { c: number }).c
@@ -945,9 +950,9 @@ export function seed(force = false): { stores: number; products: number } {
   }
 
   const insFloor = db.prepare(
-    `INSERT INTO floors (code, name, tagline, sort) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO floors (code, name, tagline, town, sort) VALUES (?, ?, ?, ?, ?)`,
   )
-  for (const f of FLOORS) insFloor.run(f.code, f.name, f.tagline, f.sort)
+  for (const f of FLOORS) insFloor.run(f.code, f.name, f.tagline, 'Gaborone', f.sort)
 
   const insAisle = db.prepare(
     `INSERT INTO aisles (floor_id, code, name, blurb, sort) VALUES (?, ?, ?, ?, ?)`,
@@ -964,8 +969,8 @@ export function seed(force = false): { stores: number; products: number } {
   const insStore = db.prepare(
     `INSERT INTO stores (slug, name, aisle_id, kind, tagline, story, accent, accent_soft, icon, banner,
       area, address, phone, hours, return_policy, delivery_promise, verified_status, verified_at, verified_by,
-      rating, review_count, fulfilment_accuracy, median_prep_minutes, tags, staff, sections, card_stamps, card_target, unit_label, unit_x, unit_y, opened_on)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      rating, review_count, fulfilment_accuracy, median_prep_minutes, tags, staff, sections, card_stamps, card_target, town, district, region, unit_label, unit_x, unit_y, opened_on)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   )
   const insProduct = db.prepare(
     `INSERT INTO products (sku, store_id, name, blurb, match_key, category, unit, icon, price_pula, was_price_pula,
@@ -1028,6 +1033,9 @@ export function seed(force = false): { stores: number; products: number } {
       JSON.stringify(s.sections),
       Math.floor(s.reviews / 90) % (s.cardTarget ?? 8),
       s.cardTarget ?? 8,
+      'Gaborone',
+      'Central',
+      'South-East',
       unitLabel,
       unitX,
       unitY,
@@ -1068,6 +1076,149 @@ export function seed(force = false): { stores: number; products: number } {
       productCount++
     }
   }
+
+  // ---- National branches: every district gets its own pavilion ----
+  BRANCHES.forEach((branch, branchIndex) => {
+    const floorCode = branch.town.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    const floorInfo = insFloor.run(
+      floorCode,
+      `${branch.town} Pavilion`,
+      `${branch.district} district \u00b7 ${branch.region} region`,
+      branch.town,
+      10 + branchIndex,
+    )
+    const floorId = Number(floorInfo.lastInsertRowid)
+    branch.aisles.forEach((a, i) => {
+      const info = insAisle.run(floorId, a.code, a.name, a.blurb, i + 1)
+      aisleId.set(a.code, Number(info.lastInsertRowid))
+    })
+
+    const hubAisle = branch.aisles[0].code
+    const hubInfo = insStore.run(
+      branch.hub.slug,
+      branch.hub.name,
+      aisleId.get(hubAisle) ?? null,
+      'hub',
+      branch.hub.tagline,
+      branch.hub.story,
+      branch.hub.accent,
+      branch.hub.accentSoft,
+      branch.hub.icon,
+      branch.hub.banner,
+      branch.hub.area,
+      branch.hub.address,
+      branch.hub.phone,
+      branch.hub.hours,
+      '14 days on goods in original condition unless marked final sale.',
+      `Orders placed before 12:00 leave ${branch.town} the same working day.`,
+      'verified',
+      daysAgoIso(90 + ((branchIndex * 11) % 120)),
+      'Botswana Verification Desk',
+      4.6,
+      40 + branchIndex * 3,
+      95,
+      60,
+      JSON.stringify(['hub', branch.town.toLowerCase(), 'national']),
+      JSON.stringify([{ name: 'Branch Coordinator', role: 'Hub manager' }]),
+      JSON.stringify([{ title: 'Branch services', kind: 'category' }]),
+      2,
+      8,
+      branch.town,
+      branch.district,
+      branch.region,
+      'HUB',
+      0.5,
+      0.56,
+      daysAgoIso(420),
+    )
+    storeIds.set(branch.hub.slug, Number(hubInfo.lastInsertRowid))
+
+    branch.shops.forEach((sh, i) => {
+      const col = i % 4
+      const row = Math.floor(i / 4)
+      const unitX = 0.12 + col * 0.253
+      const unitY = 0.2 + row * 0.26
+      const info = insStore.run(
+        sh.slug,
+        sh.name,
+        aisleId.get(sh.aisle) ?? null,
+        'retailer',
+        sh.tagline,
+        sh.story,
+        sh.accent,
+        sh.accentSoft,
+        sh.icon,
+        sh.banner,
+        sh.area,
+        sh.address,
+        sh.phone,
+        sh.hours,
+        sh.returnPolicy,
+        sh.deliveryPromise,
+        'verified',
+        daysAgoIso(60 + ((branchIndex * 13 + i * 7) % 180)),
+        'Botswana Verification Desk',
+        sh.rating,
+        sh.reviews,
+        sh.accuracy,
+        sh.prepMinutes,
+        JSON.stringify(sh.tags),
+        JSON.stringify(sh.staff),
+        JSON.stringify(sh.sections),
+        Math.floor(sh.reviews / 60) % 8,
+        8,
+        branch.town,
+        branch.district,
+        branch.region,
+        `${sh.aisle}-${String(i + 1).padStart(2, '0')}`,
+        unitX,
+        unitY,
+        daysAgoIso(300 + branchIndex * 9),
+      )
+      const storeId = Number(info.lastInsertRowid)
+      storeIds.set(sh.slug, storeId)
+
+      for (const key of sh.items) {
+        const item = LIBRARY[key]
+        if (!item) continue
+        const price = round2(item.price * branch.factor)
+        const onSpecial = (seq + key.length) % 7 === 0
+        const specialPula = onSpecial ? round2(price * 0.9) : null
+        const listed = onSpecial ? specialPula! : price
+        const origin =
+          item.category === 'Fresh Produce & Butchery'
+            ? 'Local \u2014 Botswana'
+            : item.kg >= 1
+              ? 'Imported'
+              : 'Mixed origin'
+        insProduct.run(
+          `MJ-${String(seq++).padStart(5, '0')}`,
+          storeId,
+          item.name,
+          item.blurb,
+          key,
+          item.category,
+          item.unit ?? 'each',
+          item.icon,
+          listed,
+          onSpecial ? price : null,
+          item.zar,
+          item.kg,
+          dutyForCategory(item.category),
+          origin,
+          item.stock,
+          daysAgoIso(Math.floor((seq * 7) % 180), 7, 15),
+          round2(4.1 + ((seq * 5) % 8) / 10),
+          3 + ((seq * 3) % 90),
+          12 + ((seq * 11) % 300),
+          onSpecial ? 1 : 0,
+          specialPula,
+          JSON.stringify([branch.town.toLowerCase()]),
+        )
+        productCount++
+      }
+    })
+  })
 
   for (const r of REVIEWS) {
     const sid = storeIds.get(r.store)

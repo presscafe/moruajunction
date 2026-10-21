@@ -122,11 +122,12 @@ fn load_dataset(conn: &Db) {
 
     for f in arr("floors") {
         let _ = conn.execute(
-            "INSERT INTO floors (code, name, tagline, sort) VALUES (?1,?2,?3,?4)",
+            "INSERT INTO floors (code, name, tagline, town, sort) VALUES (?1,?2,?3,?4,?5)",
             params![
                 f.get("code").and_then(|v| v.as_str()).unwrap_or(""),
                 f.get("name").and_then(|v| v.as_str()).unwrap_or(""),
                 f.get("tagline").and_then(|v| v.as_str()).unwrap_or(""),
+                f.get("town").and_then(|v| v.as_str()).unwrap_or("Gaborone"),
                 f.get("sort").and_then(|v| v.as_i64()).unwrap_or(0)
             ],
         );
@@ -162,14 +163,17 @@ fn load_dataset(conn: &Db) {
             "INSERT INTO stores (slug, name, aisle_id, kind, tagline, story, accent, accent_soft, icon, banner,
                 area, address, phone, hours, return_policy, delivery_promise, verified_status, verified_at,
                 verified_by, rating, review_count, fulfilment_accuracy, median_prep_minutes, tags, staff, sections,
-                card_stamps, card_target, unit_label, unit_x, unit_y, opened_on, approval_status, approved_at, approved_by)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35)",
+                card_stamps, card_target, town, district, region, unit_label, unit_x, unit_y, opened_on,
+                approval_status, approved_at, approved_by)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38)",
             params![
                 g("slug"), g("name"), aisle_id, g("kind"), g("tagline"), g("story"), g("accent"), g("accent_soft"),
                 g("icon"), g("banner"), g("area"), g("address"), g("phone"), g("hours"), g("return_policy"),
                 g("delivery_promise"), g("verified_status"), g("verified_at"), g("verified_by"), n("rating"),
                 i("review_count"), n("fulfilment_accuracy"), i("median_prep_minutes"), g("tags"), g("staff"),
-                g("sections"), i("card_stamps"), i("card_target"), g("unit_label"), n("unit_x"), n("unit_y"),
+                g("sections"), i("card_stamps"), i("card_target"),
+                g("town"), g("district"), g("region"),
+                g("unit_label"), n("unit_x"), n("unit_y"),
                 g("opened_on"),
                 // A handful of shops start in the approval queue so the admin
                 // console has a real queue to work on out of the box.

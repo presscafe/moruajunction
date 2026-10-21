@@ -1,6 +1,6 @@
 //! SQLite access layer. The whole marketplace state lives in one file.
 
-use rusqlite::types::{ToSqlOutput, ValueRef};
+use rusqlite::types::{ToSql, ValueRef};
 use rusqlite::{Connection, Row};
 use serde_json::{json, Map, Value};
 
@@ -25,7 +25,7 @@ pub fn row_to_json(row: &Row) -> Value {
 }
 
 /// Run a query and return every row as JSON objects.
-pub fn rows(conn: &Db, sql: &str, params: &[&dyn ToSqlOutput]) -> Vec<Value> {
+pub fn rows(conn: &Db, sql: &str, params: &[&dyn ToSql]) -> Vec<Value> {
     let mut stmt = match conn.prepare(sql) {
         Ok(s) => s,
         Err(e) => {
@@ -61,19 +61,19 @@ pub fn rows(conn: &Db, sql: &str, params: &[&dyn ToSqlOutput]) -> Vec<Value> {
 }
 
 /// Run a query and return the first row, if any.
-pub fn row(conn: &Db, sql: &str, params: &[&dyn ToSqlOutput]) -> Option<Value> {
+pub fn row(conn: &Db, sql: &str, params: &[&dyn ToSql]) -> Option<Value> {
     rows(conn, sql, params).into_iter().next()
 }
 
 /// Count of rows matching a query.
-pub fn count(conn: &Db, sql: &str, params: &[&dyn ToSqlOutput]) -> i64 {
+pub fn count(conn: &Db, sql: &str, params: &[&dyn ToSql]) -> i64 {
     row(conn, sql, params)
         .and_then(|v| v.get("c").and_then(|c| c.as_i64()))
         .unwrap_or(0)
 }
 
 /// Execute a statement, returning the number of rows changed.
-pub fn exec(conn: &Db, sql: &str, params: &[&dyn ToSqlOutput]) -> usize {
+pub fn exec(conn: &Db, sql: &str, params: &[&dyn ToSql]) -> usize {
     match conn.execute(sql, params) {
         Ok(n) => n,
         Err(e) => {

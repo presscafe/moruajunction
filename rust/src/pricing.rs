@@ -85,6 +85,7 @@ pub fn duty_for_category(category: &str) -> f64 {
 
 /// Gaborone delivery zones measured from the Morua Junction hub in Gaborone West.
 pub const ZONES: &[(&str, f64)] = &[
+    // Metro — the Pula Promise bands
     ("Gaborone Central", 3.0),
     ("Block B", 5.0),
     ("Kgale", 6.0),
@@ -94,38 +95,105 @@ pub const ZONES: &[(&str, f64)] = &[
     ("Phakalane", 9.0),
     ("Gaborone North", 13.0),
     ("Ramokgwebana", 14.0),
+    ("Ramotswa", 15.0),
+    ("Mogoditshane", 15.0),
     ("Tlokweng", 16.0),
     ("Motswedi", 18.0),
+    ("Gaborone South", 19.0),
+    ("Thapong", 22.0),
+    ("Mmabatho", 25.0),
+    // Southern corridor
+    ("Gabane", 40.0),
+    ("Oodi", 30.0),
+    ("Mmakau", 30.0),
+    ("Mochudi", 100.0),
+    ("Kanye", 90.0),
+    ("Good Hope", 100.0),
+    ("Tswapong", 85.0),
+    ("Lobatse", 75.0),
+    ("Tsabong", 300.0),
+    ("Jwaneng", 260.0),
+    ("Ghanzi", 250.0),
+    ("Mababe", 200.0),
+    ("Mooka", 100.0),
+    // Central and southern
+    ("Serowe", 220.0),
+    ("Sipholokwe", 230.0),
+    ("Mahalapye", 150.0),
+    ("Palapye", 190.0),
+    ("Letlhakeng", 160.0),
+    ("Moshupa", 130.0),
+    ("Silume", 130.0),
+    ("Otse", 130.0),
+    ("Borwa", 130.0),
+    ("Pitsani", 250.0),
+    // North-east
+    ("Selebi Phikwe", 460.0),
+    ("Francistown", 440.0),
+    ("Tsumeb", 490.0),
+    ("Orapa", 460.0),
+    ("Berea", 470.0),
+    ("Tutume", 420.0),
+    ("Nata", 600.0),
+    // North-west
+    ("Maun", 900.0),
+    ("Kasane", 1000.0),
+    ("Kazungula", 1005.0),
+    ("Gweta", 900.0),
+    ("Shakawe", 950.0),
+    ("Durabans", 920.0),
 ];
+
+/// The band a distance falls into: flat fee, promised window and the basket
+/// value at which the ride becomes free.
+pub fn band_for(km: f64) -> (&'static str, f64, i64, i64, f64) {
+    if km <= 5.0 {
+        ("Pula Promise · Zone 1 · up to 5 km", 25.0, 60, 90, 350.0)
+    } else if km <= 10.0 {
+        ("Pula Promise · Zone 2 · 5–10 km", 35.0, 90, 150, 350.0)
+    } else if km <= 20.0 {
+        ("Pula Promise · Zone 3 · 10–20 km", 50.0, 150, 240, 350.0)
+    } else if km <= 60.0 {
+        ("Zone 4 · 20–60 km", 120.0, 1440, 2880, 600.0)
+    } else if km <= 120.0 {
+        ("Zone 5 · 60–120 km", 170.0, 1440, 2880, 600.0)
+    } else if km <= 250.0 {
+        ("Zone 6 · 120–250 km", 230.0, 2880, 4320, 1200.0)
+    } else if km <= 500.0 {
+        ("Zone 7 · 250–500 km", 300.0, 4320, 7200, 1200.0)
+    } else {
+        ("Zone 8 · beyond 500 km", 380.0, 5760, 10080, 1200.0)
+    }
+}
 
 /// Pula Promise — honest, published delivery pricing and timing.
 pub fn delivery_quote(area: &str, subtotal_pula: f64) -> Value {
     let cleaned = area.trim().to_lowercase();
-    let found = ZONES.iter().find(|(name, _)| name.to_lowercase() == cleaned);
+    let exact = ZONES.iter().find(|(name, _)| name.to_lowercase() == cleaned);
+    let partial = ZONES
+        .iter()
+        .find(|(name, _)| cleaned.contains(&name.to_lowercase()) || name.to_lowercase().contains(&cleaned));
+    let found = exact.or(partial);
 
-    let (km, band, fee, eta_min, eta_max) = match found {
-        None => (40.0, "Outside Gaborone".to_string(), 85.0, 1440, 2880),
+    let (km, band, fee, eta_min, eta_max, free_above) = match found {
+        None => (
+            90.0,
+            "Zone 5 · 60–120 km".to_string(),
+            170.0,
+            1440,
+            2880,
+            600.0,
+        ),
         Some((_, km)) => {
-            let km = *km;
-            if km <= 5.0 {
-                (km, "Zone 1 · up to 5 km".to_string(), 25.0, 60, 90)
-            } else if km <= 10.0 {
-                (km, "Zone 2 · 5–10 km".to_string(), 35.0, 90, 150)
-            } else if km <= 20.0 {
-                (km, "Zone 3 · 10–20 km".to_string(), 50.0, 150, 240)
-            } else {
-                (km, "Zone 4 · beyond 20 km".to_string(), 85.0, 1440, 2880)
-            }
+            let (label, fee, min, max, free) = band_for(*km);
+            (*km, label.to_string(), fee, min, max, free)
         }
     };
 
-    let free_applied = subtotal_pula >= FREE_DELIVERY_THRESHOLD_PULA;
+    let free_applied = subtotal_pula >= free_above;
     let fee_pula = if free_applied { 0.0 } else { fee };
     let note = if free_applied {
-        format!(
-            "Delivery is free on baskets over P{}",
-            FREE_DELIVERY_THRESHOLD_PULA as i64
-        )
+        format!("Delivery is free on baskets over P{}", free_above as i64)
     } else {
         format!(
             "P{} flat, quoted up front — never a surprise at checkout",
@@ -134,7 +202,7 @@ pub fn delivery_quote(area: &str, subtotal_pula: f64) -> Value {
     };
 
     json!({
-        "zone": found.map(|(n, _)| *n).unwrap_or("Outside Gaborone"),
+        "zone": found.map(|(n, _)| *n).unwrap_or("Outside the network"),
         "km": km,
         "band": band,
         "feePula": fee_pula,
@@ -146,7 +214,6 @@ pub fn delivery_quote(area: &str, subtotal_pula: f64) -> Value {
     })
 }
 
-/// Price Guard — advisory market bands. Morua never rewrites a seller's price.
 pub fn price_band(match_key: &str, own_price: f64, peer_prices: &[f64]) -> Value {
     if peer_prices.is_empty() {
         return json!({
@@ -257,10 +324,33 @@ mod tests {
     }
 
     #[test]
-    fn unknown_area_gets_a_flat_next_day_quote() {
-        let q = delivery_quote("Kanye", 100.0);
-        assert_eq!(q["band"].as_str().unwrap(), "Outside Gaborone");
+    fn unknown_area_falls_back_to_the_national_road_rate() {
+        let q = delivery_quote("Somewhere New", 100.0);
+        assert_eq!(q["band"].as_str().unwrap(), "Zone 5 · 60–120 km");
+        assert_eq!(q["feePula"].as_f64().unwrap(), 170.0);
         assert!(q["etaMin"].as_i64().unwrap() >= 1440);
+    }
+
+    #[test]
+    fn the_national_network_covers_every_district() {
+        // Metro promise bands stay cheap; the far districts get road rates.
+        let metro = delivery_quote("Gaborone Central", 100.0);
+        assert_eq!(metro["feePula"].as_f64().unwrap(), 25.0);
+        let francistown = delivery_quote("Francistown", 100.0);
+        assert_eq!(francistown["feePula"].as_f64().unwrap(), 300.0);
+        assert!(francistown["etaMax"].as_i64().unwrap() >= 7200);
+        let maun = delivery_quote("Maun", 100.0);
+        assert_eq!(maun["feePula"].as_f64().unwrap(), 380.0);
+        assert!(maun["etaMin"].as_i64().unwrap() >= 5760);
+    }
+
+    #[test]
+    fn national_baskets_earn_free_delivery_at_a_higher_threshold() {
+        let small = delivery_quote("Mahalapye", 400.0);
+        assert!(!small["freeApplied"].as_bool().unwrap());
+        let large = delivery_quote("Mahalapye", 1500.0);
+        assert!(large["freeApplied"].as_bool().unwrap());
+        assert_eq!(large["feePula"].as_f64().unwrap(), 0.0);
     }
 
     #[test]

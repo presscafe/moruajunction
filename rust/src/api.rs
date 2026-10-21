@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use rusqlite::types::ToSqlOutput;
+use rusqlite::params;
+use rusqlite::ToSql;
 use rusqlite::Connection;
 use serde_json::{json, Map, Value};
 
@@ -83,7 +84,7 @@ async fn cors(
  * Helpers
  * ------------------------------------------------------------------ */
 
-fn args(params: &[&dyn ToSqlOutput]) -> &[&dyn ToSqlOutput] {
+fn args<'a, 'b>(params: &'a [&'b dyn ToSql]) -> &'a [&'b dyn ToSql] {
     params
 }
 
@@ -148,7 +149,7 @@ fn product_decorated(conn: &Db, product: &Value, store: Option<&Value>) -> Value
     let peers: Vec<f64> = rows(
         conn,
         "SELECT price_pula FROM products WHERE match_key = ?1 AND active = 1 AND id != ?2",
-        args(&[&match_key as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+        args(&[&match_key as &dyn ToSql, &id as &dyn ToSql]),
     )
     .iter()
     .filter_map(|r| r.get("price_pula").and_then(|v| v.as_f64()))
@@ -183,7 +184,7 @@ fn find_store(conn: &Db, slug: &str) -> Option<Value> {
     row(
         conn,
         "SELECT * FROM stores WHERE slug = ?1",
-        args(&[&slug as &dyn ToSqlOutput]),
+        args(&[&slug as &dyn ToSql]),
     )
     .map(|s| store_decorated(&s))
 }
@@ -223,16 +224,14 @@ async fn mall(State(state): S) -> Json<Value> {
     let floors = rows(&conn, "SELECT * FROM floors ORDER BY sort", &[]);
     let aisles = rows(&conn, "SELECT * FROM aisles ORDER BY sort", &[]);
     let store_rows = rows(&conn, "SELECT * FROM stores ORDER BY name", &[]);
-    let stores: Vec<Value> = store_rows
-        .iter()
-        .filter(|s| {
-            s.get("approval_status")
-                .and_then(|v| v.as_str())
-                .unwrap_or("approved")
-                == "approved"
-        })
-        .map(store_decorated)
-        .collect();
+    // Every shop in the network is listed. Shops still waiting on the admin
+    // approval queue are shown, badged, so nothing disappears from the map.
+    let stores: Vec<Value> = store_rows.iter().map(store_decorated).collect();
+    let towns = rows(
+        &conn,
+        "SELECT town, district, region, COUNT(*) AS stores FROM stores GROUP BY town, district, region ORDER BY town",
+        &[],
+    );
 
     let product_rows = rows(
         &conn,
@@ -271,6 +270,7 @@ async fn mall(State(state): S) -> Json<Value> {
         "floors": floors,
         "aisles": aisles,
         "stores": stores,
+        "towns": towns,
         "specials": specials,
         "stats": {
             "stores": counts.as_ref().and_then(|c| c.get("stores")).and_then(|v| v.as_i64()).unwrap_or(0),
@@ -291,28 +291,44 @@ async fn mall_plan(State(state): S) -> Json<Value> {
     let aisles = rows(&conn, "SELECT * FROM aisles ORDER BY sort", &[]);
     let store_rows = rows(&conn, "SELECT * FROM stores ORDER BY unit_label", &[]);
 
-    let area_coords: &[(&str, f64, f64)] = &[
-        ("Gaborone Central", 0.50, 0.50),
-        ("Block B", 0.58, 0.44),
-        ("Kgale", 0.38, 0.56),
-        ("Extension 10", 0.30, 0.42),
-        ("Gaborone West", 0.22, 0.50),
-        ("Village", 0.42, 0.38),
-        ("Phakalane", 0.33, 0.34),
-        ("Gaborone North", 0.50, 0.24),
-        ("Ramokgwebana", 0.56, 0.18),
-        ("Tlokweng", 0.20, 0.66),
-        ("Motswedi", 0.64, 0.62),
-    ];
-    let hub = (0.5, 0.5);
-    let coord = |area: &str, ux: f64, uy: f64| -> (f64, f64) {
-        let (x, y) = area_coords
+    // Aisle -> floor map, so every unit knows which pavilion it stands in.
+    let mut aisle_floor: Vec<(i64, i64)> = Vec::new();
+    for a in &aisles {
+        let aid = a.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let fid = a.get("floor_id").and_then(|v| v.as_i64()).unwrap_or(0);
+        aisle_floor.push((aid, fid));
+    }
+    let floor_of = |aisle_id: Option<i64>| -> i64 {
+        let aid = match aisle_id {
+            Some(v) => v,
+            None => return 0,
+        };
+        aisle_floor
             .iter()
-            .find(|(name, _, _)| *name == area)
-            .map(|(_, x, y)| (*x, *y))
-            .unwrap_or(hub);
-        (x + ux * 0.02, y + uy * 0.02)
+            .find(|(a, _)| *a == aid)
+            .map(|(_, f)| *f)
+            .unwrap_or(0)
     };
+
+    // Each pavilion has its own hub: the Morua Junction hub for Gaborone,
+    // the branch hub for every town.
+    let mut hubs: Vec<(i64, f64, f64)> = Vec::new();
+    for s in &store_rows {
+        if s.get("kind").and_then(|v| v.as_str()).unwrap_or("") != "hub" {
+            continue;
+        }
+        let fid = floor_of(s.get("aisle_id").and_then(|v| v.as_i64()));
+        let x = s.get("unit_x").and_then(|v| v.as_f64()).unwrap_or(0.5);
+        let y = s.get("unit_y").and_then(|v| v.as_f64()).unwrap_or(0.5);
+        hubs.push((fid, x, y));
+    }
+    let hub_for = |fid: i64| -> (f64, f64) {
+        hubs.iter()
+            .find(|(f, _, _)| *f == fid)
+            .map(|(_, x, y)| (*x, *y))
+            .unwrap_or((0.5, 0.5))
+    };
+
     let walk_minutes = |a: (f64, f64), b: (f64, f64)| -> i64 {
         let km = ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2)).sqrt() * 22.0;
         ((km / 4.5) * 60.0).round().max(1.0) as i64
@@ -320,45 +336,43 @@ async fn mall_plan(State(state): S) -> Json<Value> {
 
     let mut units = Vec::new();
     for s in &store_rows {
-        let area = s.get("area").and_then(|v| v.as_str()).unwrap_or("");
+        let aisle_id = s.get("aisle_id").and_then(|v| v.as_i64());
+        let fid = floor_of(aisle_id);
         let ux = s.get("unit_x").and_then(|v| v.as_f64()).unwrap_or(0.5);
         let uy = s.get("unit_y").and_then(|v| v.as_f64()).unwrap_or(0.5);
-        let c = coord(area, ux, uy);
-        let aisle_code = aisle_code_for(&conn, s.get("aisle_id").and_then(|v| v.as_i64()));
+        let hub = hub_for(fid);
+        let aisle_code = aisle_code_for(&conn, aisle_id);
         units.push(json!({
             "id": s.get("id").and_then(|v| v.as_i64()).unwrap_or(0),
             "slug": s.get("slug").and_then(|v| v.as_str()).unwrap_or(""),
             "name": s.get("name").and_then(|v| v.as_str()).unwrap_or(""),
             "icon": s.get("icon").and_then(|v| v.as_str()).unwrap_or(""),
             "accent": s.get("accent").and_then(|v| v.as_str()).unwrap_or("#333"),
-            "area": area,
+            "area": s.get("area").and_then(|v| v.as_str()).unwrap_or(""),
+            "town": s.get("town").and_then(|v| v.as_str()).unwrap_or("Gaborone"),
+            "floorId": fid,
             "unitLabel": s.get("unit_label").and_then(|v| v.as_str()).unwrap_or(""),
             "x": ux,
             "y": uy,
             "aisle": aisle_code,
-            "minutesFromHub": walk_minutes(c, hub),
+            "kind": s.get("kind").and_then(|v| v.as_str()).unwrap_or("retailer"),
+            "approval": s.get("approval_status").and_then(|v| v.as_str()).unwrap_or("approved"),
+            "minutesFromHub": walk_minutes((ux, uy), hub),
         }));
+    }
+
+    let mut hubs_out = Vec::new();
+    for (fid, x, y) in &hubs {
+        hubs_out.push(json!({"floorId": fid, "x": x, "y": y, "label": "Morua Junction Hub"}));
     }
 
     Json(json!({
         "floors": floors,
         "aisles": aisles,
         "units": units,
-        "hub": {"x": hub.0, "y": hub.1, "label": "Morua Junction Hub — Gaborone West"},
+        "hubs": hubs_out,
+        "hub": {"x": 0.5, "y": 0.5, "label": "Morua Junction Hub — Gaborone West"},
     }))
-}
-
-fn aisle_code_for(conn: &Db, aisle_id: Option<i64>) -> String {
-    match aisle_id {
-        Some(id) => row(
-            conn,
-            "SELECT code FROM aisles WHERE id = ?1",
-            args(&[&id as &dyn ToSqlOutput]),
-        )
-        .and_then(|r| r.get("code").and_then(|v| v.as_str()).map(String::from))
-        .unwrap_or_default(),
-        None => String::new(),
-    }
 }
 
 async fn list_stores(
@@ -370,10 +384,15 @@ async fn list_stores(
     let q = params.get("q").cloned();
     let tag = params.get("tag").cloned();
 
+    let town = params.get("town").cloned();
     let mut sql = String::from(
         "SELECT s.* FROM stores s LEFT JOIN aisles a ON a.id = s.aisle_id WHERE 1=1",
     );
-    let mut args: Vec<Box<dyn ToSqlOutput>> = Vec::new();
+    let mut args: Vec<Box<dyn ToSql>> = Vec::new();
+    if let Some(t) = town {
+        sql.push_str(" AND s.town = ?");
+        args.push(Box::new(t));
+    }
     if let Some(a) = aisle {
         sql.push_str(" AND a.code = ?");
         args.push(Box::new(a));
@@ -388,10 +407,9 @@ async fn list_stores(
         sql.push_str(" AND s.tags LIKE ?");
         args.push(Box::new(format!("%\"{t}\"%")));
     }
-    sql.push_str(" AND s.approval_status = 'approved'");
-    sql.push_str(" ORDER BY s.kind = 'hub' DESC, s.name");
+    sql.push_str(" ORDER BY s.town, s.kind = 'hub' DESC, s.name");
 
-    let bound: Vec<&dyn ToSqlOutput> = args.iter().map(|b| b.as_ref()).collect();
+    let bound: Vec<&dyn ToSql> = args.iter().map(|b| b.as_ref()).collect();
     let stores: Vec<Value> = rows(&conn, &sql, &bound).iter().map(store_decorated).collect();
     Json(json!({"stores": stores}))
 }
@@ -402,19 +420,22 @@ async fn store_detail(State(state): S, Path(slug): Path<String>) -> Json<Value> 
         Some(s) => s,
         None => return Json(json!({"error": "Store not found"})),
     };
-    if store.get("approval_status").and_then(|v| v.as_str()).unwrap_or("approved") != "approved" {
-        return Json(json!({"error": "This shop is still awaiting admin approval."}));
-    }
+    let approval = store
+        .get("approval_status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("approved")
+        .to_string();
+    let tradeable = approval == "approved";
     let id = store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
     let products = rows(
         &conn,
         "SELECT * FROM products WHERE store_id = ?1 AND active = 1 ORDER BY is_special DESC, name",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let reviews = rows(
         &conn,
         "SELECT id, author, rating, body, created_at FROM reviews WHERE store_id = ?1 ORDER BY created_at DESC LIMIT 12",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let peers: Vec<Value> = products
         .iter()
@@ -423,7 +444,7 @@ async fn store_detail(State(state): S, Path(slug): Path<String>) -> Json<Value> 
             let n: i64 = row(
                 &conn,
                 "SELECT COUNT(*) AS c FROM products WHERE match_key = ?1 AND active = 1 AND store_id != ?2",
-                args(&[&key as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+                args(&[&key as &dyn ToSql, &id as &dyn ToSql]),
             )
             .and_then(|r| r.get("c").and_then(|v| v.as_i64()))
             .unwrap_or(0);
@@ -438,12 +459,13 @@ async fn store_detail(State(state): S, Path(slug): Path<String>) -> Json<Value> 
     let fresh = row(
         &conn,
         "SELECT MAX(stock_synced_at) AS max FROM products WHERE store_id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     )
     .and_then(|r| r.get("max").and_then(|v| v.as_str()).map(String::from));
 
     Json(json!({
-        "store": store,
+        "store": store_decorated(&store),
+        "tradeable": tradeable,
         "products": products.iter().map(|p| product_decorated(&conn, p, Some(&store))).collect::<Vec<_>>(),
         "reviews": reviews,
         "shelfFreshness": shelf_freshness(fresh.as_deref()),
@@ -456,7 +478,7 @@ async fn product_detail(State(state): S, Path(id): Path<i64>) -> Json<Value> {
     let product = match row(
         &conn,
         "SELECT * FROM products WHERE id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     ) {
         Some(p) => p,
         None => return Json(json!({"error": "Product not found"})),
@@ -465,7 +487,7 @@ async fn product_detail(State(state): S, Path(id): Path<i64>) -> Json<Value> {
     let store = row(
         &conn,
         "SELECT * FROM stores WHERE id = ?1",
-        args(&[&store_id as &dyn ToSqlOutput]),
+        args(&[&store_id as &dyn ToSql]),
     );
     let shop_approved = store
         .as_ref()
@@ -473,20 +495,18 @@ async fn product_detail(State(state): S, Path(id): Path<i64>) -> Json<Value> {
         .and_then(|v| v.as_str())
         .unwrap_or("approved")
         == "approved";
-    if !shop_approved {
-        return Json(json!({"error": "This shop is still awaiting admin approval."}));
-    }
     let key = product.get("match_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let peers = rows(
         &conn,
         "SELECT p.*, s.name AS store_name, s.slug AS store_slug, s.area AS store_area
          FROM products p JOIN stores s ON s.id = p.store_id
          WHERE p.match_key = ?1 AND p.active = 1 AND p.id != ?2 ORDER BY p.price_pula",
-        args(&[&key as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+        args(&[&key as &dyn ToSql, &id as &dyn ToSql]),
     );
 
     Json(json!({
         "product": product_decorated(&conn, &product, store.as_ref()),
+        "tradeable": shop_approved,
         "peers": peers.iter().map(|p| json!({
             "id": p.get("id").and_then(|v| v.as_i64()).unwrap_or(0),
             "name": p.get("name").and_then(|v| v.as_str()).unwrap_or(""),
@@ -506,7 +526,7 @@ async fn aisle_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
     let aisle = match row(
         &conn,
         "SELECT * FROM aisles WHERE code = ?1",
-        args(&[&code as &dyn ToSqlOutput]),
+        args(&[&code as &dyn ToSql]),
     ) {
         Some(a) => a,
         None => return Json(json!({"error": "Aisle not found"})),
@@ -514,14 +534,14 @@ async fn aisle_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
     let id = aisle.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
     let store_rows = rows(
         &conn,
-        "SELECT * FROM stores WHERE aisle_id = ?1 AND approval_status = 'approved' ORDER BY kind = 'hub' DESC, name",
-        args(&[&id as &dyn ToSqlOutput]),
+        "SELECT * FROM stores WHERE aisle_id = ?1 ORDER BY kind = 'hub' DESC, name",
+        args(&[&id as &dyn ToSql]),
     );
     let products = rows(
         &conn,
         "SELECT p.* FROM products p JOIN stores s ON s.id = p.store_id
          WHERE s.aisle_id = ?1 AND p.active = 1 ORDER BY p.is_special DESC, p.sold_count DESC LIMIT 40",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     Json(json!({
         "aisle": aisle,
@@ -628,7 +648,7 @@ fn build_quote(
             let product = match row(
                 conn,
                 "SELECT * FROM products WHERE id = ?1 AND active = 1",
-                args(&[&pid as &dyn ToSqlOutput]),
+                args(&[&pid as &dyn ToSql]),
             ) {
                 Some(p) => p,
                 None => continue,
@@ -638,7 +658,7 @@ fn build_quote(
                 &row(
                     conn,
                     "SELECT * FROM stores WHERE id = ?1",
-                    args(&[&store_id as &dyn ToSqlOutput]),
+                    args(&[&store_id as &dyn ToSql]),
                 )
                 .unwrap_or(json!({})),
             );
@@ -845,7 +865,7 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
             total_pula, saved_pula, address, notes, eta_minutes, placed_at, updated_at, collect_point)
          VALUES (?1,?2,?3,?4,?5,'placed',?6,?7,'held',?8,?9,?10,?11,?12,?13,?14,?15,?16,?16,?17)",
         args(&[
-            &code as &dyn ToSqlOutput,
+            &code as &dyn ToSql,
             &customer_name,
             &customer_phone,
             &area,
@@ -874,7 +894,7 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
             "INSERT INTO order_items (order_id, product_id, store_id, qty, unit_price_pula, line_total_pula,
                 commission_pula, seller_net_pula, markup_pula) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
             args(&[
-                &order_id as &dyn ToSqlOutput,
+                &order_id as &dyn ToSql,
                 &pid,
                 &sid,
                 &l.qty,
@@ -888,7 +908,7 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         exec(
             &conn,
             "UPDATE products SET stock = MAX(0, stock - ?1), sold_count = sold_count + ?1 WHERE id = ?2",
-            args(&[&l.qty as &dyn ToSqlOutput, &pid as &dyn ToSqlOutput]),
+            args(&[&l.qty as &dyn ToSql, &pid as &dyn ToSql]),
         );
     }
 
@@ -935,7 +955,7 @@ async fn order_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
     let order = match row(
         &conn,
         "SELECT * FROM orders WHERE code = ?1",
-        args(&[&code as &dyn ToSqlOutput]),
+        args(&[&code as &dyn ToSql]),
     ) {
         Some(o) => o,
         None => return Json(json!({"error": "Order not found"})),
@@ -944,12 +964,12 @@ async fn order_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
     let items = rows(
         &conn,
         "SELECT oi.*, p.name, p.icon, p.sku FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let stores: Vec<Value> = rows(
         &conn,
         "SELECT DISTINCT s.* FROM stores s JOIN order_items oi ON oi.store_id = s.id WHERE oi.order_id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     )
     .iter()
     .map(store_decorated)
@@ -961,7 +981,7 @@ async fn order_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
             row(
                 &conn,
                 "SELECT * FROM delivery_providers WHERE id = ?1",
-                args(&[&pid as &dyn ToSqlOutput]),
+                args(&[&pid as &dyn ToSql]),
             )
         });
 
@@ -993,7 +1013,7 @@ async fn advance_order(
     let order = match row(
         &conn,
         "SELECT * FROM orders WHERE code = ?1",
-        args(&[&code as &dyn ToSqlOutput]),
+        args(&[&code as &dyn ToSql]),
     ) {
         Some(o) => o,
         None => return Json(json!({"error": "Order not found"})),
@@ -1023,7 +1043,7 @@ async fn advance_order(
     exec(
         &conn,
         "UPDATE orders SET status = ?1, updated_at = ?2 WHERE id = ?3",
-        args(&[&to as &dyn ToSqlOutput, &ts as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+        args(&[&to as &dyn ToSql, &ts as &dyn ToSql, &id as &dyn ToSql]),
     );
 
     if to == "delivered" {
@@ -1032,7 +1052,7 @@ async fn advance_order(
             let items = rows(
                 &conn,
                 "SELECT commission_pula, seller_net_pula, markup_pula FROM order_items WHERE order_id = ?1",
-                args(&[&id as &dyn ToSqlOutput]),
+                args(&[&id as &dyn ToSql]),
             );
             let sum = |key: &str| -> f64 {
                 items
@@ -1059,7 +1079,7 @@ async fn advance_order(
             exec(
                 &conn,
                 "UPDATE orders SET escrow_state = 'released' WHERE id = ?1",
-                args(&[&id as &dyn ToSqlOutput]),
+                args(&[&id as &dyn ToSql]),
             );
             ledger::post(
                 &conn,
@@ -1121,7 +1141,7 @@ async fn seller_console(State(state): S, Path(slug): Path<String>) -> Json<Value
     let products = rows(
         &conn,
         "SELECT * FROM products WHERE store_id = ?1 AND active = 1 ORDER BY name",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let decorated: Vec<Value> = products
         .iter()
@@ -1132,24 +1152,24 @@ async fn seller_console(State(state): S, Path(slug): Path<String>) -> Json<Value
         "SELECT o.id, o.code, o.status, o.total_pula, o.placed_at, o.customer_name, o.customer_area, o.fulfilment
          FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE oi.store_id = ?1
          GROUP BY o.id ORDER BY o.placed_at DESC LIMIT 20",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let revenue = row(
         &conn,
         "SELECT COALESCE(SUM(oi.line_total_pula),0) AS gmv, COUNT(DISTINCT oi.order_id) AS orders,
                 COALESCE(SUM(oi.markup_pula),0) AS markup, COALESCE(SUM(oi.commission_pula),0) AS commission
          FROM order_items oi WHERE oi.store_id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let payout = row(
         &conn,
         "SELECT COALESCE(SUM(net_pula),0) AS net, COUNT(*) AS count FROM payouts WHERE store_id = ?1 AND state='scheduled'",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     let notifications = rows(
         &conn,
         "SELECT * FROM notifications WHERE store_id = ?1 ORDER BY id DESC LIMIT 20",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
 
     let gmv = revenue.as_ref().and_then(|r| r.get("gmv")).and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -1204,11 +1224,11 @@ async fn seller_save_product(
                 price_pula = COALESCE(?3, price_pula), stock = COALESCE(?4, stock), stock_synced_at = ?5
              WHERE id = ?6 AND store_id = ?7",
             args(&[
-                &name as &dyn ToSqlOutput,
+                &name as &dyn ToSql,
                 &blurb,
                 &price,
                 &stock,
-                &now_iso() as &dyn ToSqlOutput,
+                &now_iso() as &dyn ToSql,
                 &pid,
                 &id,
             ]),
@@ -1225,7 +1245,7 @@ async fn seller_save_product(
             sold_count, is_special, special_pula, tags, active)
          VALUES (?1,?2,?3,?4,?5,'Services',?6,?7,?8,?9,?10,0.15,'Gaborone',?11,?12,0,0,0,0,NULL,'[]',1)",
         args(&[
-            &sku as &dyn ToSqlOutput,
+            &sku as &dyn ToSql,
             &id,
             &name,
             &blurb,
@@ -1236,7 +1256,7 @@ async fn seller_save_product(
             &sa_zar,
             &weight,
             &stock.unwrap_or(0),
-            &now_iso() as &dyn ToSqlOutput,
+            &now_iso() as &dyn ToSql,
         ]),
     );
     Json(json!({"ok": true, "id": last_id(&conn)}))
@@ -1261,8 +1281,8 @@ async fn seller_sync_shelf(
                 &conn,
                 "UPDATE products SET stock = ?1, stock_synced_at = ?2 WHERE id = ?3 AND store_id = ?4",
                 args(&[
-                    &stock as &dyn ToSqlOutput,
-                    &ts as &dyn ToSqlOutput,
+                    &stock as &dyn ToSql,
+                    &ts as &dyn ToSql,
                     &pid,
                     &id,
                 ]),
@@ -1272,7 +1292,7 @@ async fn seller_sync_shelf(
             exec(
                 &conn,
                 "UPDATE products SET stock_synced_at = ?1 WHERE store_id = ?2",
-                args(&[&ts as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+                args(&[&ts as &dyn ToSql, &id as &dyn ToSql]),
             );
         }
     }
@@ -1295,14 +1315,14 @@ async fn seller_set_special(
         exec(
             &conn,
             "UPDATE products SET is_special = 0, special_pula = NULL WHERE id = ?1 AND store_id = ?2",
-            args(&[&pid as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+            args(&[&pid as &dyn ToSql, &id as &dyn ToSql]),
         );
     } else {
         let special = body.get("specialPula").and_then(|v| v.as_f64()).unwrap_or(0.0);
         exec(
             &conn,
             "UPDATE products SET is_special = 1, special_pula = ?1 WHERE id = ?2 AND store_id = ?3",
-            args(&[&special as &dyn ToSqlOutput, &pid, &id]),
+            args(&[&special as &dyn ToSql, &pid, &id]),
         );
     }
     Json(json!({"ok": true}))
@@ -1318,7 +1338,7 @@ async fn seller_notifications(State(state): S, Path(slug): Path<String>) -> Json
     let list = rows(
         &conn,
         "SELECT * FROM notifications WHERE store_id = ?1 ORDER BY id DESC LIMIT 50",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     );
     Json(json!({"notifications": list}))
 }
@@ -1334,7 +1354,7 @@ async fn seller_read_notifications(
         exec(
             &conn,
             "UPDATE notifications SET read = 1 WHERE store_id = ?1",
-            args(&[&id as &dyn ToSqlOutput]),
+            args(&[&id as &dyn ToSql]),
         );
     }
     Json(json!({"ok": true}))
@@ -1452,7 +1472,7 @@ async fn admin_approval(
     let store = match row(
         &conn,
         "SELECT * FROM stores WHERE id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     ) {
         Some(s) => s,
         None => return Json(json!({"error": "Store not found"})),
@@ -1464,9 +1484,9 @@ async fn admin_approval(
         &conn,
         "UPDATE stores SET approval_status = ?1, approval_note = ?2, approved_at = ?3, approved_by = ?4 WHERE id = ?5",
         args(&[
-            &status as &dyn ToSqlOutput,
+            &status as &dyn ToSql,
             &note,
-            &ts as &dyn ToSqlOutput,
+            &ts as &dyn ToSql,
             &actor,
             &id,
         ]),
@@ -1519,7 +1539,7 @@ async fn admin_markup(
     let store = match row(
         &conn,
         "SELECT * FROM stores WHERE id = ?1",
-        args(&[&id as &dyn ToSqlOutput]),
+        args(&[&id as &dyn ToSql]),
     ) {
         Some(s) => s,
         None => return Json(json!({"error": "Store not found"})),
@@ -1530,10 +1550,10 @@ async fn admin_markup(
         &conn,
         "UPDATE stores SET markup_pct = ?1, markup_note = ?2, markup_set_by = ?3, markup_set_at = ?4 WHERE id = ?5",
         args(&[
-            &markup as &dyn ToSqlOutput,
+            &markup as &dyn ToSql,
             &note,
             &actor,
-            &ts as &dyn ToSqlOutput,
+            &ts as &dyn ToSql,
             &id,
         ]),
     );
@@ -1594,7 +1614,7 @@ async fn admin_dispatch(
     let order = match row(
         &conn,
         "SELECT * FROM orders WHERE code = ?1",
-        args(&[&code as &dyn ToSqlOutput]),
+        args(&[&code as &dyn ToSql]),
     ) {
         Some(o) => o,
         None => return Json(json!({"error": "Order not found"})),
@@ -1602,7 +1622,7 @@ async fn admin_dispatch(
     let provider = match row(
         &conn,
         "SELECT * FROM delivery_providers WHERE id = ?1",
-        args(&[&provider_id as &dyn ToSqlOutput]),
+        args(&[&provider_id as &dyn ToSql]),
     ) {
         Some(p) => p,
         None => return Json(json!({"error": "Choose a registered delivery provider"})),
@@ -1620,12 +1640,12 @@ async fn admin_dispatch(
             rider_phone = ?4, dispatch_note = ?5, dispatched_at = ?6, status = CASE WHEN status = 'placed' THEN 'confirmed' ELSE status END,
             updated_at = ?6 WHERE id = ?7",
         args(&[
-            &provider_id as &dyn ToSqlOutput,
+            &provider_id as &dyn ToSql,
             &provider_name,
             &rider,
             &rider_phone,
             &note,
-            &ts as &dyn ToSqlOutput,
+            &ts as &dyn ToSql,
             &id,
         ]),
     );
@@ -1651,7 +1671,7 @@ async fn admin_create_dispute(State(state): S, Json(body): Json<Value>) -> Json<
     let order_id = row(
         &conn,
         "SELECT id FROM orders WHERE code = ?1",
-        args(&[&order_code as &dyn ToSqlOutput]),
+        args(&[&order_code as &dyn ToSql]),
     )
     .and_then(|r| r.get("id").and_then(|v| v.as_i64()));
     exec(
@@ -1659,11 +1679,11 @@ async fn admin_create_dispute(State(state): S, Json(body): Json<Value>) -> Json<
         "INSERT INTO disputes (order_id, store_id, subject, detail, state, raised_by, resolution, created_at)
          VALUES (?1,NULL,?2,?3,'open',?4,NULL,?5)",
         args(&[
-            &order_id as &dyn ToSqlOutput,
+            &order_id as &dyn ToSql,
             &body.get("subject").and_then(|v| v.as_str()).unwrap_or("Issue with an order"),
             &body.get("detail").and_then(|v| v.as_str()).unwrap_or(""),
             &body.get("raisedBy").and_then(|v| v.as_str()).unwrap_or("customer"),
-            &now_iso() as &dyn ToSqlOutput,
+            &now_iso() as &dyn ToSql,
         ]),
     );
     Json(json!({"ok": true}))
@@ -1683,7 +1703,7 @@ async fn admin_resolve_dispute(
     exec(
         &conn,
         "UPDATE disputes SET resolution = ?1, state = 'resolved' WHERE id = ?2",
-        args(&[&resolution as &dyn ToSqlOutput, &id as &dyn ToSqlOutput]),
+        args(&[&resolution as &dyn ToSql, &id as &dyn ToSql]),
     );
     record_admin_action(
         &conn,
@@ -1725,14 +1745,14 @@ async fn admin_create_promotion(State(state): S, Json(body): Json<Value>) -> Jso
         "INSERT INTO promotions (name, scope_type, scope_id, pct, amount_pula, funded_by, budget_pula,
             spent_pula, state, starts_at, ends_at) VALUES (?1,?2,?3,?4,0,?5,?6,0,'live',?7,?8)",
         args(&[
-            &name as &dyn ToSqlOutput,
+            &name as &dyn ToSql,
             &scope_type,
             &scope_id,
-            &pct as &dyn ToSqlOutput,
+            &pct as &dyn ToSql,
             &funded_by,
-            &budget as &dyn ToSqlOutput,
-            &crate::timeutil::date_offset(0) as &dyn ToSqlOutput,
-            &crate::timeutil::date_offset(30) as &dyn ToSqlOutput,
+            &budget as &dyn ToSql,
+            &crate::timeutil::date_offset(0) as &dyn ToSql,
+            &crate::timeutil::date_offset(30) as &dyn ToSql,
         ]),
     );
     record_admin_action(
