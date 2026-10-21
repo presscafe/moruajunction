@@ -157,6 +157,49 @@ TypeScript monolith (NestJS or Next.js) · PostgreSQL + Prisma · Redis for queu
 
 ---
 
-## 4. Related documents
+## 4. As built — the decisions that were ratified (2026-10)
+
+The audit's recommendations in section 2 were **overturned by the founder** on
+three points, and the scope was widened. This section records what was
+actually decided and built, so the repository is not read against a
+recommendation that was never adopted.
+
+| # | Audit recommended | Decision taken | How it is built |
+|---|---|---|---|
+| D1 | Seller-only pricing; admin must never reprice (C-2) | **The admin sets a markup on shop managers' prices** | The admin applies a levy of 0–25 % to a shop's own price. It is applied at quote time, shown to the shopper as a mall levy, paid to the shop, clamped, written to the audit trail, and the seller is notified with the reason. The admin cannot edit a seller's own price — only add a declared levy on top of it. |
+| D3 | One contracted delivery partner; no auction (C-4) | **The admin chooses the delivery provider for each order** | Five registered providers (vans, motorbikes, e-scooters, national freight, route riders). The admin assigns one per order, names the rider, and the shopper sees the name on the tracking screen. No bidding, no race to the bottom. |
+| D6 | TypeScript monolith (H-7) | **Rust as far as it goes** | One Rust binary (axum + tokio + SQLite) is the only backend. The remaining TypeScript is the dataset toolkit that compiles the catalogue into the JSON the binary embeds. The storefront is a Vite + React PWA. |
+| D4 | One area, two categories (C-7) | **All of Botswana, every district** | 18 towns, 22 floors, 56 aisles, 72 shops, 381 products, 52 delivery zones from Gaborone Central (P25) to Kasane (P380). |
+| C-3 | Risk-based approval, not a liquidity tax | **The admin approves every shop manager** | No shop trades until approved. Pending shops stay visible in the directory and badged *awaiting approval*, so the queue is transparent rather than hidden. Three seeded shops start pending so the queue is real on day one. |
+
+### 4.1 What did not change
+
+The audit's reasoning survives the overrides in the ways that matter:
+
+* **Server-authoritative pricing** — the browser never computes a payable
+  amount. The quote comes from the server, with the seller price, the admin
+  markup, the delivery band and the service fee applied once, in one place.
+* **Price Guard is advisory.** It shows the band and flags outliers; it never
+  rewrites a seller's price. The admin's markup is a *declared* levy, shown
+  separately — not a silent reprice.
+* **Double-entry ledger from day one.** Every order posts a balanced set of
+  lines. The admin console shows the balances and the recent entries.
+* **Escrow, and return to the shop** rather than to a courier depot.
+* **COD and Orange Money first**, with card on delivery as the third rail.
+* **Audit trail on every admin action** — who, when, why.
+* **Data Protection Act 18 of 2024**: 72-hour breach clock, DPIA, and no
+  cross-border transfer of shopper data by default.
+
+### 4.2 Open items that remain open
+
+D2 (agent vs principal, pending a written BURS position), D5 (the final fee
+card), D7 (which payment rails are switched on first) and D9 (trademark
+clearance) are still open. D8 is answered differently: the pickup points are
+the branch hubs, one per town.
+
+---
+
+## 5. Related documents
 
 - **[competitive-audit.md](audit/competitive-audit.md)** — the full deep audit: findings register, scored benchmark against 11 competitors, risk register, 90-day plan, unit economics, and sources.
+- **[deploy.md](deploy.md)** — how to put the storefront and the API on free hosting.
