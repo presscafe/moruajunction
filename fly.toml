@@ -39,3 +39,4 @@ primary_region = "jnb"   # Johannesburg — closest Fly region to Gaborone
 
 [volumes]
   [volumes.morua_data]
+    size_gb = 1

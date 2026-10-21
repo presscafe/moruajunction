@@ -39,10 +39,35 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+/**
+ * The reads that are safe to keep on the device: the catalogue, the plan
+ * and the published price lists. The admin console, the seller console,
+ * orders and the ledger are never cached — they carry money, other people's
+ * details and a shop's commercial position, and a shared phone must not
+ * keep them.
+ */
+const PUBLIC_READS = [
+  '/api/mall',
+  '/api/mall/plan',
+  '/api/stores',
+  '/api/aisles',
+  '/api/aisle/',
+  '/api/products',
+  '/api/areas',
+  '/api/providers',
+  '/api/walk',
+]
+
+function isPublicRead(pathname) {
+  return PUBLIC_READS.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`) || pathname.startsWith(`${prefix}?`),
+  )
+}
+
 /** GET requests to the API are safe to serve from cache while offline. */
 function isCacheable(url) {
   if (url.pathname.startsWith('/api/')) {
-    return ['GET'].includes(url.method)
+    return url.method === 'GET' && isPublicRead(url.pathname)
   }
   return url.pathname.startsWith('/assets/') || SHELL_FILES.includes(url.pathname)
 }
@@ -55,7 +80,9 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return
 
   if (url.pathname.startsWith('/api/')) {
-    // Stale-while-revalidate for catalogue reads.
+    // Stale-while-revalidate for catalogue reads. Anything that is not a
+    // public catalogue read goes straight to the network: never from cache.
+    if (!isPublicRead(url.pathname)) return
     event.respondWith(
       caches.open(DATA).then(async (cache) => {
         const cached = await cache.match(request)

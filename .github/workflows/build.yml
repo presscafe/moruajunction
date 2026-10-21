@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches:
-      - arena/1f00941f-moruajunction
+      - 'arena/**'
   pull_request:
   workflow_dispatch:
 
@@ -50,6 +50,26 @@ jobs:
           echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check the API contract
+        run: |
+          set +e
+          rm -f /tmp/morua-contract.db*
+          MORUA_DB=/tmp/morua-contract.db ./target/release/morua &
+          server=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8787/api/health > /dev/null && break
+            sleep 1
+          done
+          node ../scripts/contract-check.mjs http://127.0.0.1:8787 2>&1 | tee contract-check.log
+          status=${PIPESTATUS[0]}
+          kill $server 2>/dev/null || true
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
       - name: Publish the binary and diagnostics
         if: always()
         run: |
@@ -58,6 +78,7 @@ jobs:
           cp cargo-build.log ../diagnostics/cargo-build.txt 2>/dev/null || true
           cp target/release/morua ../diagnostics/morua-linux 2>/dev/null || true
           cp Cargo.lock ../diagnostics/Cargo.lock 2>/dev/null || true
+          cp contract-check.log ../diagnostics/contract-check.txt 2>/dev/null || true
           cd ..
           git config user.name "morua-ci"
           git config user.email "morua-ci@users.noreply.github.com"
@@ -72,3 +93,54 @@ jobs:
           name: morua-linux
           path: rust/target/release/morua
           if-no-files-found: error
+
+  storefront:
+    name: Storefront
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The dataset toolkit uses node:sqlite, which is only available
+          # from Node 22.13 without a flag.
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build:web
+
+      - name: Check the cache policy
+        run: npm run check:cache
+
+      - name: Check the dataset matches the toolkit
+        run: |
+          set +e
+          npm run check:dataset 2>&1 | tee dataset-check.log
+          status=${PIPESTATUS[0]}
+          echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          # The check puts the dataset back as it found it, so the tree must
+          # still be clean: the committed catalogue is the catalogue.
+          git diff --exit-code -- rust/seed/morua.json
+
+      - name: Check the PWA assets are in the bundle
+        run: |
+          set +e
+          missing=0
+          for asset in index.html manifest.webmanifest sw.js offline.html icons/icon-192.png icons/icon-512.png; do
+            if [ ! -f "dist/public/$asset" ]; then
+              echo "missing from the bundle: $asset"
+              missing=1
+            fi
+          done
+          if [ $missing -ne 0 ]; then exit 1; fi
+          echo "every PWA asset is in the bundle" >> "$GITHUB_STEP_SUMMARY"

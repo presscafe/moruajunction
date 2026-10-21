@@ -13,7 +13,12 @@
     "start": "./rust/target/release/morua",
     "dataset": "tsx scripts/dump-seed.ts",
     "typecheck": "tsc --noEmit",
-    "test:rust": "cargo test --manifest-path rust/Cargo.toml"
+    "test:rust": "cargo test --manifest-path rust/Cargo.toml",
+    "contract": "node scripts/contract-check.mjs",
+    "contract:local": "node scripts/contract-check.mjs http://127.0.0.1:8787",
+    "check:cache": "node scripts/cache-policy-check.mjs",
+    "check:dataset": "node scripts/dataset-check.mjs",
+    "check": "npm run typecheck && npm run check:cache && npm run check:dataset"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -31,5 +36,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.5"
+  },
+  "engines": {
+    "node": ">=22.13"
   }
 }

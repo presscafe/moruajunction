@@ -8,13 +8,31 @@ import {
 const BASE = (import.meta as any).env?.VITE_API_BASE ?? ''
 
 /**
- * Every catalogue read is written to IndexedDB, so a shopper with no signal
- * still sees the shop they walked into. Writes — orders, approvals,
- * markups, dispatches — are never cached and never served from cache.
+ * The reads that are safe to keep on the device: the catalogue, the plan
+ * and the published price lists. The admin console, the seller console,
+ * orders and the ledger are never written to the device cache — they carry
+ * money, other people's details and a shop's commercial position, and a
+ * shared phone must not keep them.
  */
+const PUBLIC_READS = [
+  '/mall',
+  '/mall/plan',
+  '/stores',
+  '/aisles',
+  '/aisle/',
+  '/products',
+  '/areas',
+  '/providers',
+  '/walk',
+]
+
+export function isPublicRead(path: string): boolean {
+  return PUBLIC_READS.some((prefix) => path === prefix || path.startsWith(prefix + '?'))
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase()
-  const cacheable = method === 'GET'
+  const cacheable = method === 'GET' && isPublicRead(path)
   try {
     const res = await fetch(`${BASE}/api${path}`, {
       headers: { 'content-type': 'application/json' },
