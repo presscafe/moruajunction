@@ -155,7 +155,7 @@ pub fn migrate(conn: &Connection) {
         ),
     ];
     for (table, cols) in additions {
-        let stmt = conn
+        let mut stmt = conn
             .prepare(&format!("PRAGMA table_info({table})"))
             .expect("table_info");
         let existing: Vec<String> = stmt

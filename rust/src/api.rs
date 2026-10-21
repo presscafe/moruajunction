@@ -189,6 +189,20 @@ fn find_store(conn: &Db, slug: &str) -> Option<Value> {
     .map(|s| store_decorated(&s))
 }
 
+/// The aisle a shop unit stands in, e.g. "A2" or "FA1".
+fn aisle_code_for(conn: &Db, aisle_id: Option<i64>) -> String {
+    match aisle_id {
+        Some(id) => row(
+            conn,
+            "SELECT code FROM aisles WHERE id = ?1",
+            args(&[&id as &dyn ToSql]),
+        )
+        .and_then(|r| r.get("code").and_then(|v| v.as_str()).map(String::from))
+        .unwrap_or_default(),
+        None => String::new(),
+    }
+}
+
 fn record_admin_action(
     conn: &Db,
     actor: &str,
