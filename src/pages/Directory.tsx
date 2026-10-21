@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Store } from '../lib/api'
-import { Badge, Empty, SectionHead, Spinner, StoreCard } from '../components/bits'
+import { Badge, Empty, SectionHead, SkeletonGrid, StoreCard } from '../components/bits'
 
 export default function Directory() {
   const [params, setParams] = useSearchParams()
@@ -99,7 +99,7 @@ export default function Directory() {
       )}
 
       {loading ? (
-        <Spinner label="Walking the aisles" />
+        <SkeletonGrid count={6} />
       ) : visible.length === 0 ? (
         <Empty glyph="🔍" title="Nothing matches that" body="Try a different town or search term." />
       ) : (

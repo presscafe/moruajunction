@@ -206,6 +206,39 @@ export function PriceBandBar({ band }: { band: Band }) {
 
 /* ----------------------------------- misc ---------------------------------- */
 
+/** A skeleton card, used while the mall loads rather than a spinner. */
+export function Skeleton({ paper = false, lines = 3 }: { paper?: boolean; lines?: number }) {
+  return (
+    <div className={paper ? 'skeleton-paper' : 'skeleton-card'}>
+      <div className="skeleton-line tall" />
+      <div className="sk-body">
+        {Array.from({ length: lines }).map((_, i) => (
+          <div
+            key={i}
+            className={`skeleton-line ${i === 0 ? 'w-70' : i === lines - 1 ? 'w-40' : 'w-90'}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function SkeletonGrid({
+  count = 8,
+  paper = false,
+}: {
+  count?: number
+  paper?: boolean
+}) {
+  return (
+    <div className="grid grid-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} paper={paper} />
+      ))}
+    </div>
+  )
+}
+
 export function Spinner({ label = 'Loading' }: { label?: string }) {
   return (
     <div className="centered" style={{ padding: '3rem', gap: '0.6rem' }}>

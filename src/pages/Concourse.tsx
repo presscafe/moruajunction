@@ -3,7 +3,16 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Mall, Product } from '../lib/api'
 import { pula, pulaShort } from '../lib/format'
-import { Badge, Empty, ProductCard, SectionHead, Spinner, Stat, StoreCard } from '../components/bits'
+import {
+  Badge,
+  Empty,
+  ProductCard,
+  SectionHead,
+  SkeletonGrid,
+  Spinner,
+  Stat,
+  StoreCard,
+} from '../components/bits'
 
 const CATEGORIES = [
   { key: 'Groceries & Staples', icon: '🛒' },
@@ -58,7 +67,18 @@ export default function Concourse() {
   )
 
   if (error) return <Empty glyph="⚠️" title="The mall is closed" body={error} />
-  if (!mall) return <Spinner label="Opening the Concourse" />
+  if (!mall) {
+    return (
+      <div className="wrap section">
+        <div className="hero-stats" style={{ marginBottom: '2rem' }}>
+          <Stat n="—" l="Shops trading" />
+          <Stat n="—" l="Products listed" />
+          <Stat n="—" l="Towns covered" />
+        </div>
+        <SkeletonGrid count={8} />
+      </div>
+    )
+  }
 
   const landLocal = mall.specials.filter((p: Product) => p.landed?.localWins).length
 

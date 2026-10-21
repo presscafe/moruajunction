@@ -152,7 +152,19 @@ export default function Storefront() {
               </div>
             ))}
             {data.products.length === 0 && (
-              <Empty glyph="📦" title="The shelves are empty" body="This shop has not listed stock yet." />
+              s.kind === 'hub' ? (
+                <Empty
+                  glyph="🏛️"
+                  title="This is a Junction hub"
+                  body="Not a shop with a shelf — a collection point, a returns desk and the place the rider meets the order. Browse the shops around it instead."
+                />
+              ) : (
+                <Empty
+                  glyph="📦"
+                  title="The shelves are empty"
+                  body="This shop has not listed stock yet."
+                />
+              )
             )}
           </>
         )}

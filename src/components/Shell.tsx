@@ -1,21 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useCart } from '../App'
 import { api } from '../lib/api'
+import { subscribeLinkState, type LinkState } from '../lib/offline'
 
 const NAV = [
   { to: '/', label: 'Concourse', end: true },
-  { to: '/map', label: "Mall Map" },
+  { to: '/map', label: 'Mall Map' },
   { to: '/shop', label: 'Shops' },
   { to: '/basket', label: 'Basket' },
   { to: '/seller', label: 'Seller' },
   { to: '/admin', label: 'Admin' },
 ]
 
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export default function Shell({ children }: { children: React.ReactNode }) {
   const { count, area, setArea } = useCart()
   const [term, setTerm] = useState('')
   const [areas, setAreas] = useState<string[]>([])
+  const [link, setLink] = useState<LinkState>('live')
+  const [install, setInstall] = useState<InstallPromptEvent | null>(null)
+  const installRef = useRef<InstallPromptEvent | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -25,6 +34,37 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       .catch(() => setAreas([]))
   }, [])
 
+  useEffect(() => subscribeLinkState(setLink), [])
+
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault()
+      installRef.current = e as InstallPromptEvent
+      setInstall(installRef.current)
+    }
+    const onInstalled = () => {
+      installRef.current = null
+      setInstall(null)
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  async function addToHome() {
+    const prompt = installRef.current
+    if (!prompt) return
+    await prompt.prompt()
+    const choice = await prompt.userChoice
+    if (choice.outcome === 'accepted') {
+      installRef.current = null
+      setInstall(null)
+    }
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!term.trim()) return
@@ -33,6 +73,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {link !== 'live' && (
+        <div className="offline-bar" role="status">
+          <span>
+            {link === 'offline' ? '📡 You are offline' : '📦 Showing saved prices'} — the mall still
+            works. Orders need a connection.
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={() => window.location.reload()}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <header className="topbar">
         <div className="wrap topbar-inner">
           <Link to="/" className="brand">
@@ -63,14 +115,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <input
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Search 381 products in 18 towns"
+              placeholder="Search the mall"
               aria-label="Search the mall"
             />
           </form>
 
           <select
             className="select"
-            style={{ width: 'auto', minWidth: '150px' }}
+            style={{ width: 'auto', minWidth: '140px' }}
             value={area}
             onChange={(e) => setArea(e.target.value)}
             aria-label="Delivery area"
@@ -81,6 +133,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </option>
             ))}
           </select>
+
+          {install && (
+            <button className="btn btn-ghost btn-sm nowrap" onClick={addToHome}>
+              ⬇ Install
+            </button>
+          )}
 
           <Link to="/basket" className="cart-pill">
             <span aria-hidden>🧺</span>
@@ -123,9 +181,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 verified shop, delivered by a named rider, or collected today.
               </p>
               <p className="tiny muted" style={{ marginTop: '0.8rem' }}>
-                Gaborone · Francistown · Lobatse · Kanye · Serowe · Mahalapye · Mochudi · Palapye ·
-                Letlhakeng · Tsabong · Ghanzi · Selebi Phikwe · Maun · Kasane · Tsumeb · Nata ·
-                Mogoditshane · Tlokweng
+                Forty towns, from Gaborone to Kasane, and every district in between.
               </p>
             </div>
             <div>

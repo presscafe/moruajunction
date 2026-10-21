@@ -1,19 +1,48 @@
+import {
+  markCached,
+  markLive,
+  readCache,
+  writeCache,
+} from './offline'
+
 const BASE = (import.meta as any).env?.VITE_API_BASE ?? ''
 
+/**
+ * Every catalogue read is written to IndexedDB, so a shopper with no signal
+ * still sees the shop they walked into. Writes — orders, approvals,
+ * markups, dispatches — are never cached and never served from cache.
+ */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}/api${path}`, {
-    headers: { 'content-type': 'application/json' },
-    ...init,
-  })
-  const text = await res.text()
-  let data: any = null
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const cacheable = method === 'GET'
   try {
-    data = text ? JSON.parse(text) : null
-  } catch {
-    data = { error: text }
+    const res = await fetch(`${BASE}/api${path}`, {
+      headers: { 'content-type': 'application/json' },
+      ...init,
+    })
+    const text = await res.text()
+    let data: any = null
+    try {
+      data = text ? JSON.parse(text) : null
+    } catch {
+      data = { error: text }
+    }
+    if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`)
+    if (cacheable) {
+      markLive()
+      void writeCache(path, data)
+    }
+    return data as T
+  } catch (error) {
+    if (cacheable) {
+      const cached = await readCache<T>(path)
+      if (cached) {
+        markCached()
+        return cached.data
+      }
+    }
+    throw error
   }
-  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`)
-  return data as T
 }
 
 export const api = {
