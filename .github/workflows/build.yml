@@ -50,6 +50,10 @@ jobs:
           echo "exit=$status" >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Check the API contract
         run: |
           set +e
@@ -98,7 +102,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # The dataset toolkit uses node:sqlite, which is only available
+          # from Node 22.13 without a flag.
+          node-version: 24
           cache: npm
 
       - name: Install
