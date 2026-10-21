@@ -26,10 +26,7 @@ for = "/manifest.webmanifest"
   Content-Type = "application/manifest+json"
   Cache-Control = "public, max-age=3600"
 
-# API routes are proxied to the Rust service. Point VITE_API_BASE at the same
-# host if you prefer, but the proxy keeps the app same-origin and avoids CORS.
-[[rules]]
-type = "404"
-globs = ["**"]
-status = 200
-html = "./dist/public/index.html"
+# The single-page-app fallback lives in public/_redirects, which Cloudflare
+# Pages reads from the built output. API routes are proxied to the Rust
+# service by the hosting platform (or by VITE_API_BASE), so the app stays
+# same-origin and needs no CORS.
