@@ -10,6 +10,7 @@ export default function MallMap() {
   const [error, setError] = useState<string | null>(null)
   const [floorId, setFloorId] = useState<number | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
+  const [town, setTown] = useState<string | null>(null)
 
   useEffect(() => {
     api
@@ -22,9 +23,18 @@ export default function MallMap() {
       .catch((e) => setError(e.message))
   }, [])
 
+  const activeFloor = useMemo(() => {
+    const floors = (plan?.floors ?? []).filter(
+      (f: any) => !town || (f.town ?? 'Gaborone') === town,
+    )
+    const withUnits = floors.filter((f: any) => plan?.units.some((u: any) => u.floorId === f.id))
+    const match = withUnits.find((f: any) => f.id === floorId)
+    return (match ?? withUnits[0])?.id ?? floorId
+  }, [plan, floorId, town])
+
   const units = useMemo(
-    () => (plan?.units ?? []).filter((u: any) => u.floorId === floorId),
-    [plan, floorId],
+    () => (plan?.units ?? []).filter((u: any) => u.floorId === activeFloor),
+    [plan, activeFloor],
   )
   const aisles = useMemo(
     () => (plan?.aisles ?? []).filter((a: any) => units.some((u: any) => u.aisle === a.code)),
@@ -39,10 +49,16 @@ export default function MallMap() {
       <SectionHead
         eyebrow="Mall Compass™"
         title="The Junction, from above"
-        lede="Every pavilion floor of Morua Junction. The hub sits at the centre; the dashed line is your walk from it. Tap a unit to walk in."
+        lede="Every pavilion floor of Morua Junction — Gaborone's five floors and the branch pavilions in forty towns. The hub sits at the centre; the dashed line is your walk from it. Tap a unit to walk in."
       />
 
-      <MallPlan plan={plan} initialFloor={floorId} onFloorChange={setFloorId} />
+      <MallPlan
+        plan={plan}
+        initialFloor={floorId}
+        onFloorChange={setFloorId}
+        town={town}
+        onTownChange={setTown}
+      />
 
       <div className="grid grid-2" style={{ marginTop: '1.6rem' }}>
         <div className="panel">

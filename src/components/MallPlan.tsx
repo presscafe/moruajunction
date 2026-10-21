@@ -7,6 +7,9 @@ export interface PlanProps {
   /** Floor id to start on; when null the first floor with units is used. */
   initialFloor?: number | null
   onFloorChange?: (floorId: number) => void
+  /** Only show the floors of this town; null shows every floor. */
+  town?: string | null
+  onTownChange?: (town: string | null) => void
 }
 
 /**
@@ -16,12 +19,29 @@ export interface PlanProps {
  * centre, the shop units in their real positions, and the walk from the hub
  * to every unit. Pick a floor and the map moves with you.
  */
-export default function MallPlan({ plan, initialFloor, onFloorChange }: PlanProps) {
+export default function MallPlan({
+  plan,
+  initialFloor,
+  onFloorChange,
+  town,
+  onTownChange,
+}: PlanProps) {
   const navigate = useNavigate()
-  const floorsWithUnits = useMemo(() => {
+  const allFloors = useMemo(() => {
     const used = new Set(plan.units.map((u) => u.floorId))
     return plan.floors.filter((f) => used.has(f.id))
   }, [plan])
+
+  const towns = useMemo(() => {
+    const set = new Set<string>()
+    allFloors.forEach((f) => set.add((f as any).town ?? 'Gaborone'))
+    return [...set].sort()
+  }, [allFloors])
+
+  const floorsWithUnits = useMemo(
+    () => (town ? allFloors.filter((f) => ((f as any).town ?? 'Gaborone') === town) : allFloors),
+    [allFloors, town],
+  )
 
   const [floorId, setFloorId] = useState<number | null>(initialFloor ?? null)
   const activeFloor = useMemo(() => {
@@ -40,6 +60,24 @@ export default function MallPlan({ plan, initialFloor, onFloorChange }: PlanProp
 
   return (
     <div>
+      <div className="row gap wrapflex" style={{ marginBottom: '0.8rem' }}>
+        <button
+          className={`pill-toggle${!town ? ' active' : ''}`}
+          onClick={() => onTownChange?.(null)}
+        >
+          All {towns.length} towns
+        </button>
+        {towns.map((t) => (
+          <button
+            key={t}
+            className={`pill-toggle${town === t ? ' active' : ''}`}
+            onClick={() => onTownChange?.(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       <div className="floor-tabs" role="tablist" aria-label="Mall floors">
         {floorsWithUnits.map((f) => {
           const count = plan.units.filter((u) => u.floorId === f.id).length
