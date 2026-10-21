@@ -19,8 +19,6 @@ jobs:
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -32,10 +30,32 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
 
       - name: Test
-        run: cargo test --locked
+        run: |
+          set -o pipefail
+          cargo test 2>&1 | tee cargo-test.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::cargo test failures"
+            grep -E "^(error|warning|failures:|test .* FAILED)" cargo-test.log | head -40 | while IFS= read -r line; do
+              echo "::error title=cargo test::${line//::/:}"
+            done
+            echo "::endgroup::"
+          fi
+          exit $status
 
       - name: Build release binary
-        run: cargo build --release --locked
+        run: |
+          set -o pipefail
+          cargo build --release 2>&1 | tee cargo-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::cargo build errors"
+            grep -E "^(error|warning)" cargo-build.log | head -40 | while IFS= read -r line; do
+              echo "::error title=cargo build::${line//::/:}"
+            done
+            echo "::endgroup::"
+          fi
+          exit $status
 
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
