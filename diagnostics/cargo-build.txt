@@ -1,0 +1,119 @@
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.27
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m libc v0.2.191
+[1m[92m   Compiling[0m syn v3.0.9
+[1m[92m   Compiling[0m futures-core v0.3.34
+[1m[92m   Compiling[0m bytes v1.12.1
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m zerocopy v0.8.63
+[1m[92m   Compiling[0m ahash v0.8.12
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m mio v1.2.4
+[1m[92m   Compiling[0m socket2 v0.6.5
+[1m[92m   Compiling[0m find-msvc-tools v0.1.15
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m cc v1.9.0
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m tokio-macros v2.7.2
+[1m[92m   Compiling[0m futures-task v0.3.34
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m tokio v1.54.0
+[1m[92m   Compiling[0m tower-service v0.3.3
+[1m[92m   Compiling[0m pkg-config v0.3.34
+[1m[92m   Compiling[0m log v0.4.34
+[1m[92m   Compiling[0m smallvec v1.16.3
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m   Compiling[0m cfg-if v1.0.5
+[1m[92m   Compiling[0m futures-util v0.3.34
+[1m[92m   Compiling[0m libsqlite3-sys v0.28.0
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m httpdate v1.0.3
+[1m[92m   Compiling[0m tower-layer v0.3.3
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m atomic-waker v1.1.2
+[1m[92m   Compiling[0m sync_wrapper v1.0.2
+[1m[92m   Compiling[0m form_urlencoded v1.2.2
+[1m[92m   Compiling[0m hashbrown v0.14.5
+[1m[92m   Compiling[0m hyper v1.12.0
+[1m[92m   Compiling[0m async-trait v0.1.92
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m mime v0.3.17
+[1m[92m   Compiling[0m axum-core v0.4.5
+[1m[92m   Compiling[0m serde_urlencoded v0.7.1
+[1m[92m   Compiling[0m hyper-util v0.1.21
+[1m[92m   Compiling[0m hashlink v0.9.1
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m serde_path_to_error v0.1.20
+[1m[92m   Compiling[0m fallible-streaming-iterator v0.1.9
+[1m[92m   Compiling[0m fallible-iterator v0.3.0
+[1m[92m   Compiling[0m matchit v0.7.3
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m axum v0.7.9
+[1m[92m   Compiling[0m rusqlite v0.31.0
+[1m[92m   Compiling[0m morua-junction v0.1.0 (/home/runner/work/moruajunction/moruajunction/rust)
+[1m[33mwarning[0m[1m: function `row_to_json` is never used[0m
+  [1m[94m--> [0msrc/db.rs:10:8
+   [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m pub fn row_to_json(row: &Row) -> Value {
+   [1m[94m|[0m        [1m[33m^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: function `count` is never used[0m
+  [1m[94m--> [0msrc/db.rs:69:8
+   [1m[94m|[0m
+[1m[94m69[0m [1m[94m|[0m pub fn count(conn: &Db, sql: &str, params: &[&dyn ToSql]) -> i64 {
+   [1m[94m|[0m        [1m[33m^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `num` is never used[0m
+  [1m[94m--> [0msrc/db.rs:92:8
+   [1m[94m|[0m
+[1m[94m92[0m [1m[94m|[0m pub fn num(v: Option<Value>) -> f64 {
+   [1m[94m|[0m        [1m[33m^^^[0m
+
+[1m[33mwarning[0m[1m: function `text` is never used[0m
+  [1m[94m--> [0msrc/db.rs:97:8
+   [1m[94m|[0m
+[1m[94m97[0m [1m[94m|[0m pub fn text(v: Option<&Value>, key: &str) -> String {
+   [1m[94m|[0m        [1m[33m^^^^[0m
+
+[1m[33mwarning[0m[1m: function `empty_object` is never used[0m
+   [1m[94m--> [0msrc/db.rs:104:8
+    [1m[94m|[0m
+[1m[94m104[0m [1m[94m|[0m pub fn empty_object() -> Value {
+    [1m[94m|[0m        [1m[33m^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `entries_for_order` is never used[0m
+   [1m[94m--> [0msrc/ledger.rs:102:8
+    [1m[94m|[0m
+[1m[94m102[0m [1m[94m|[0m pub fn entries_for_order(conn: &Db, order_id: i64) -> Vec<Value> {
+    [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: constant `FREE_DELIVERY_THRESHOLD_PULA` is never used[0m
+  [1m[94m--> [0msrc/pricing.rs:27:11
+   [1m[94m|[0m
+[1m[94m27[0m [1m[94m|[0m pub const FREE_DELIVERY_THRESHOLD_PULA: f64 = 350.0;
+   [1m[94m|[0m           [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: function `duty_for_category` is never used[0m
+  [1m[94m--> [0msrc/pricing.rs:64:8
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m pub fn duty_for_category(category: &str) -> f64 {
+   [1m[94m|[0m        [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m: `morua-junction` (bin "morua") generated 8 warnings
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 33.68s

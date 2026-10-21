@@ -1,0 +1,102 @@
+
+Morua Junction — API contract check against http://127.0.0.1:8787
+===================================================================================================
+  PASS  GET /api/mall.stores[0]                                                
+  PASS  GET /api/mall.specials[0].landed                                       
+  PASS  GET /api/mall.specials[0].band                                         
+  PASS  GET /api/mall.specials[0].shelf                                        
+  PASS  GET /api/mall.specials[0]                                              
+  PASS  GET /api/mall.stats                                                    
+  PASS  GET /api/mall                                                          
+  PASS  mall: every shop in the network is listed                              138 stores
+  PASS  mall: towns carry their district and region                            40 towns
+  PASS  mall: a shop awaiting approval is still listed                         3 pending
+  PASS  GET /api/mall/plan.units[0]                                            
+  PASS  GET /api/mall/plan.hubs[0]                                             
+  PASS  GET /api/mall/plan.hub                                                 
+  PASS  GET /api/mall/plan                                                     
+  PASS  plan: every unit is on a floor with a hub                              
+  PASS  GET /api/stores/:slug.store                                            
+  PASS  GET /api/stores/:slug.products[0].landed                               
+  PASS  GET /api/stores/:slug.products[0].band                                 
+  PASS  GET /api/stores/:slug.products[0].shelf                                
+  PASS  GET /api/stores/:slug.products[0]                                      
+  PASS  GET /api/stores/:slug.shelfFreshness                                   
+  PASS  GET /api/stores/:slug                                                  
+  PASS  store: products belong to the shop that serves them                    37 products
+  PASS  GET /api/aisles/:code.aisle                                            
+  PASS  GET /api/aisles/:code.stores[0]                                        
+  PASS  GET /api/aisles/:code.products[0].landed                               
+  PASS  GET /api/aisles/:code.products[0].band                                 
+  PASS  GET /api/aisles/:code.products[0].shelf                                
+  PASS  GET /api/aisles/:code.products[0]                                      
+  PASS  GET /api/aisles/:code                                                  
+  PASS  aisle: the shops listed stand in that aisle                            1 shops
+  PASS  GET /api/products/:id.product.landed                                   
+  PASS  GET /api/products/:id.product.band                                     
+  PASS  GET /api/products/:id.product.shelf                                    
+  PASS  GET /api/products/:id.product                                          
+  PASS  GET /api/products/:id                                                  
+  PASS  product: the shop that sells it is named                               A Letshego Fashion House
+  PASS  GET /api/areas                                                         
+  PASS  areas: the national zones are published                                52
+  PASS  GET /api/providers.providers[0]                                        
+  PASS  GET /api/providers                                                     
+  PASS  providers: at least two to choose from                                 
+  PASS  POST /api/cart/quote.lines[0].store                                    
+  PASS  POST /api/cart/quote.lines[0].landed                                   
+  PASS  POST /api/cart/quote.lines[0]                                          
+  PASS  POST /api/cart/quote.stores[0]                                         
+  PASS  POST /api/cart/quote.deliveryQuote                                     
+  PASS  POST /api/cart/quote                                                   
+  PASS  quote: the payable amount is the sum of the lines                      P299.21
+  PASS  quote: a far town costs more to deliver to                             P25 -> P380
+  PASS  POST /api/orders: an order is placed                                   MJ-2026-490288
+  PASS  GET /api/orders/:code.order                                            
+  PASS  GET /api/orders/:code.stores[0]                                        
+  PASS  GET /api/orders/:code                                                  
+  PASS  order: the escrow holds the money until delivery                       
+  PASS  POST /api/admin/orders/:code/dispatch: the admin assigns the provider  Metsi Same-Day Riders
+  PASS  order: the shopper can see which provider is carrying it               Metsi Same-Day Riders
+  PASS  POST /api/orders/:code/advance: the order reaches delivered            
+  PASS  order: the escrow is released on delivery                              released
+  PASS  GET /api/ledger.balances[0]                                            
+  PASS  GET /api/ledger                                                        
+  PASS  ledger: debits equal credits                                           balance -0.00
+  PASS  GET /api/seller/:slug.store                                            
+  PASS  GET /api/seller/:slug.products[0].landed                               
+  PASS  GET /api/seller/:slug.products[0].band                                 
+  PASS  GET /api/seller/:slug.products[0].shelf                                
+  PASS  GET /api/seller/:slug.products[0]                                      
+  PASS  GET /api/seller/:slug.revenue                                          
+  PASS  GET /api/seller/:slug.payout                                           
+  PASS  GET /api/seller/:slug.alerts                                           
+  PASS  GET /api/seller/:slug                                                  
+  PASS  GET /api/seller/:slug/notifications                                    
+  PASS  POST /api/seller/:slug/shelf: the shop syncs its stock                 
+  PASS  seller: the synced stock is what the mall shows                        stock 30
+  PASS  seller: the sync stamps the shelf as live                              Just now
+  PASS  POST /api/seller/:slug/special: the shop sets a special                
+  PASS  seller: the special reaches the mall                                   special 7.5
+  PASS  POST /api/seller/:slug/special: the shop clears it again               
+  PASS  seller: the cleared special comes off the mall                         special null
+  PASS  POST /api/seller/:slug/products: the shop saves a product              product 1589
+  PASS  seller: the saved price reaches the mall                               P9.99
+  PASS  GET /api/admin.stores[0]                                               
+  PASS  GET /api/admin.providers[0]                                            
+  PASS  GET /api/admin.balances[0]                                             
+  PASS  GET /api/admin.platform                                                
+  PASS  GET /api/admin                                                         
+  PASS  orders: a shop awaiting approval cannot take one                       Bitwise Computing & Gaming is still waiting for the Junction
+  PASS  POST /api/admin/stores/:id/approval: the admin approves the shop       approved
+  PASS  POST /api/admin/stores/:id/markup: the admin sets the markup           12%
+  PASS  seller: the shop is told about the markup                              Your shop markup is now 12%
+  PASS  seller: the shop is told about the approval                            
+  PASS  admin: every action is written to the audit trail                      1 actions recorded
+  PASS  seller: the shop has an inbox with something in it                     2 notifications
+  PASS  POST /api/seller/:slug/notifications/read: the shop clears its inbox   
+  PASS  seller: the cleared inbox stays cleared                                2 notifications
+  PASS  GET /api/walk                                                          
+  PASS  walk: a route is measured from the hub                                 7 min
+===================================================================================================
+97/97 checks passed
