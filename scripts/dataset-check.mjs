@@ -18,7 +18,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -55,17 +55,22 @@ console.log('')
 console.log('Morua Junction — dataset drift check')
 console.log('='.repeat(64))
 
-const committed = JSON.parse(readFileSync(DATASET, 'utf8'))
+const committedBytes = readFileSync(DATASET, 'utf8')
+const committed = JSON.parse(committedBytes)
 
+let rebuilt
 try {
   execFileSync('npm', ['run', '--silent', 'dataset'], { cwd: ROOT, stdio: 'pipe' })
+  rebuilt = JSON.parse(readFileSync(DATASET, 'utf8'))
 } catch (error) {
   console.log('  FAIL  the toolkit could not regenerate the dataset')
   console.log(String(error.stderr ?? error.message).split('\n').slice(-6).join('\n'))
   process.exit(1)
+} finally {
+  // The toolkit rewrites the file in place. Put back exactly what was
+  // committed, so a check never leaves the working tree dirty.
+  writeFileSync(DATASET, committedBytes)
 }
-
-const rebuilt = JSON.parse(readFileSync(DATASET, 'utf8'))
 
 const problems = []
 if (JSON.stringify(normalise(committed)) !== JSON.stringify(normalise(rebuilt))) {
