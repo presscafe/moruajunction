@@ -143,7 +143,28 @@ fetches it at runtime.
 
 ---
 
-## 5. Checklist before you go live
+## 5. Getting the binary without a Rust toolchain
+
+The GitHub Actions workflow compiles, tests and publishes the Linux binary on
+every push to the working branch. Two ways to get it:
+
+* **GitHub Actions artifact** — `morua-linux` on the run, downloadable from the
+  Actions tab.
+* **The `ci/diagnostics` branch** — the workflow also commits the binary, the
+  build log and `Cargo.lock` there, which is useful on networks that cannot
+  reach the artifact store:
+
+  ```bash
+  git fetch origin ci/diagnostics
+  git show origin/ci/diagnostics:diagnostics/morua-linux > morua && chmod +x morua
+  ```
+
+  It is a scratch branch: it is force-pushed on every build and is not part of
+  the product.
+
+---
+
+## 6. Checklist before you go live
 
 - [ ] `MORUA_DB` points at a persistent volume, not a container-local path.
 - [ ] `/health` returns `{"status":"ok"}` from the public URL.
