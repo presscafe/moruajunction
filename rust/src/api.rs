@@ -1085,16 +1085,24 @@ async fn advance_order(
         Some(o) => o,
         None => return Json(json!({"error": "Order not found"})),
     };
-    let to = body
+    let requested = body
         .get("status")
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+    let current = order.get("status").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let current_index = ORDER_FLOW.iter().position(|s| *s == current);
+    // With no status named, the order moves one step along its own flow.
+    let to = match (current_index, requested.is_empty()) {
+        (Some(c), true) => ORDER_FLOW
+            .get(c + 1)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| current.clone()),
+        _ => requested.clone(),
+    };
     if !ORDER_FLOW.contains(&to.as_str()) {
         return Json(json!({"error": "Unknown status"}));
     }
-    let current = order.get("status").and_then(|v| v.as_str()).unwrap_or("");
-    let current_index = ORDER_FLOW.iter().position(|s| *s == current);
     let next_index = ORDER_FLOW.iter().position(|s| *s == to.as_str());
     match (current_index, next_index) {
         (Some(c), Some(n)) if n == c + 1 => {}

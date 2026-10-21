@@ -50,7 +50,12 @@ export default function Concourse() {
   }, [mall])
 
   const featured = useMemo(() => (mall?.stores ?? []).filter((s) => s.kind !== 'hub').slice(0, 8), [mall])
-  const hub = useMemo(() => (mall?.stores ?? []).find((s) => s.kind === 'hub'), [mall])
+  const hub = useMemo(
+    () =>
+      (mall?.stores ?? []).find((s) => s.kind === 'hub' && s.town === 'Gaborone') ??
+      (mall?.stores ?? []).find((s) => s.kind === 'hub'),
+    [mall],
+  )
 
   if (error) return <Empty glyph="⚠️" title="The mall is closed" body={error} />
   if (!mall) return <Spinner label="Opening the Concourse" />

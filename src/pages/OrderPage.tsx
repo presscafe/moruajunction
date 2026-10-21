@@ -7,8 +7,11 @@ import { dateTime, minutes, pula } from '../lib/format'
 
 const STEPS = [
   { key: 'placed', label: 'Order placed', note: 'The shop has it' },
-  { key: 'confirmed', label: 'Confirmed by the shop', note: 'Stock checked and packed' },
-  { key: 'dispatched', label: 'With the rider', note: 'A named provider is carrying it' },
+  { key: 'confirmed', label: 'Confirmed by the shop', note: 'Stock checked, price agreed' },
+  { key: 'picking', label: 'Being picked', note: 'The shop is putting the basket together' },
+  { key: 'picked_up', label: 'Collected by the rider', note: 'A named provider has it' },
+  { key: 'in_transit', label: 'On the road', note: 'Moving to your address' },
+  { key: 'out_for_delivery', label: 'Out for delivery', note: 'Arriving today' },
   { key: 'delivered', label: 'Delivered', note: 'Money released from escrow' },
 ]
 
