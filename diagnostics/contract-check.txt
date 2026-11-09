@@ -1,0 +1,137 @@
+
+Morua Junction — API contract check against http://127.0.0.1:8787
+===================================================================================================
+  PASS  GET /api/mall.stores[0]                                                
+  PASS  GET /api/mall.specials[0].landed                                       
+  PASS  GET /api/mall.specials[0].band                                         
+  PASS  GET /api/mall.specials[0].shelf                                        
+  PASS  GET /api/mall.specials[0]                                              
+  PASS  GET /api/mall.stats                                                    
+  PASS  GET /api/mall                                                          
+  PASS  mall: every shop in the network is listed                              138 stores
+  PASS  mall: towns carry their district and region                            40 towns
+  PASS  mall: a shop awaiting approval is still listed                         3 pending
+  PASS  mall: a special is on sale in the shop that sells it                   8 specials
+  PASS  GET /api/mall/plan.units[0]                                            
+  PASS  GET /api/mall/plan.hubs[0]                                             
+  PASS  GET /api/mall/plan.hub                                                 
+  PASS  GET /api/mall/plan                                                     
+  PASS  plan: every unit is on a floor with a hub                              
+  PASS  GET /api/stores/:slug.store                                            
+  PASS  GET /api/stores/:slug.products[0].landed                               
+  PASS  GET /api/stores/:slug.products[0].band                                 
+  PASS  GET /api/stores/:slug.products[0].shelf                                
+  PASS  GET /api/stores/:slug.products[0]                                      
+  PASS  GET /api/stores/:slug.shelfFreshness                                   
+  PASS  GET /api/stores/:slug                                                  
+  PASS  store: products belong to the shop that serves them                    37 products
+  PASS  GET /api/aisles/:code.aisle                                            
+  PASS  GET /api/aisles/:code.stores[0]                                        
+  PASS  GET /api/aisles/:code.products[0].landed                               
+  PASS  GET /api/aisles/:code.products[0].band                                 
+  PASS  GET /api/aisles/:code.products[0].shelf                                
+  PASS  GET /api/aisles/:code.products[0]                                      
+  PASS  GET /api/aisles/:code                                                  
+  PASS  aisle: the shops listed stand in that aisle                            1 shops
+  PASS  GET /api/products/:id.product.landed                                   
+  PASS  GET /api/products/:id.product.band                                     
+  PASS  GET /api/products/:id.product.shelf                                    
+  PASS  GET /api/products/:id.product                                          
+  PASS  GET /api/products/:id                                                  
+  PASS  product: the shop that sells it is named                               A Letshego Fashion House
+  PASS  GET /api/areas                                                         
+  PASS  areas: the national zones are published                                52
+  PASS  GET /api/providers.providers[0]                                        
+  PASS  GET /api/providers                                                     
+  PASS  providers: at least two to choose from                                 
+  PASS  POST /api/cart/quote.lines[0].store                                    
+  PASS  POST /api/cart/quote.lines[0].landed                                   
+  PASS  POST /api/cart/quote.lines[0]                                          
+  PASS  POST /api/cart/quote.stores[0]                                         
+  PASS  POST /api/cart/quote.deliveryQuote                                     
+  PASS  POST /api/cart/quote                                                   
+  PASS  quote: the payable amount is the sum of the lines                      P299.21
+  PASS  quote: a far town costs more to deliver to                             P25 -> P380
+  PASS  POST /api/orders: an order is placed                                   MJ-2026-600274
+  PASS  GET /api/orders/:code.order                                            
+  PASS  GET /api/orders/:code.stores[0]                                        
+  PASS  GET /api/orders/:code                                                  
+  PASS  order: the escrow holds the money until delivery                       
+  PASS  POST /api/admin/orders/:code/dispatch: the admin assigns the provider  Metsi Same-Day Riders
+  PASS  order: the shopper can see which provider is carrying it               Metsi Same-Day Riders
+  PASS  POST /api/orders/:code/advance: the order reaches delivered            
+  PASS  order: the money stays in escrow until the shopper confirms            awaiting
+  PASS  GET /api/ledger.balances[0]                                            
+  PASS  GET /api/ledger                                                        
+  PASS  ledger: debits equal credits                                           balance 0.00
+  PASS  a shopper can send an item back to the shop                            1
+  PASS  the return carries the price the shopper paid                          P133.11
+  PASS  GET /api/orders/:code/returns                                          
+  PASS  the shopper can see the return they asked for                          
+  PASS  GET /api/seller/:slug/returns                                          
+  PASS  the shop is told about the send-back                                   1 in the shop's inbox
+  PASS  the same item cannot be sent back twice                                Only 0 of that item can still be sent back
+  PASS  the mall will not refund a return the shop has not accepted            The shop has to accept the return before it can be refunded
+  PASS  the shop can take it back                                              accepted
+  PASS  the mall refunds the shopper                                           P133.11
+  PASS  the shopper confirms and the money is released                         released
+  PASS  the books still balance after a refund                                 balance 0.00
+  PASS  the refund is written into the ledger                                  
+  PASS  a shopper can raise a problem with an order                            1
+  PASS  GET /api/orders/:code/disputes                                         
+  PASS  the shopper can see the problem they raised                            
+  PASS  the mall admin sees the problem                                        
+  PASS  the mall admin answers it                                              
+  PASS  the shopper sees the answer                                            
+  PASS  GET /api/card                                                          
+  PASS  a delivered order earns a stamp on the card                            1 of 8 stamps
+  PASS  the card fills up as the shopper keeps shopping                        8 of 8 stamps
+  PASS  a full card earns a credit against the basket                          P50
+  PASS  the credit is taken off what the shopper pays                          P133.11 → P83.11
+  PASS  the same basket without the card is not discounted                     
+  PASS  the card is spent on the order that used it                            P120.6
+  PASS  the card starts again once the credit is used                          0 stamps
+  PASS  the books still balance after a card credit                            balance 0.00
+  PASS  GET /api/seller/:slug.store                                            
+  PASS  GET /api/seller/:slug.products[0].landed                               
+  PASS  GET /api/seller/:slug.products[0].band                                 
+  PASS  GET /api/seller/:slug.products[0].shelf                                
+  PASS  GET /api/seller/:slug.products[0]                                      
+  PASS  GET /api/seller/:slug.revenue                                          
+  PASS  GET /api/seller/:slug.payout                                           
+  PASS  GET /api/seller/:slug.alerts                                           
+  PASS  GET /api/seller/:slug                                                  
+  PASS  GET /api/seller/:slug/notifications                                    
+  PASS  POST /api/seller/:slug/shelf: the shop syncs its stock                 
+  PASS  seller: the synced stock is what the mall shows                        stock 22
+  PASS  seller: the sync stamps the shelf as live                              Just now
+  PASS  POST /api/seller/:slug/special: the shop sets a special                
+  PASS  seller: the special reaches the mall                                   special 7.5
+  PASS  a special is charged at the special price                              charged P7.5, special P7.5
+  PASS  the shopper can see what the special saved them                        was P147.9, shelf P147.9
+  PASS  the price it was reduced from follows the shelf price                  was P152.9, shelf P152.9
+  PASS  POST /api/seller/:slug/special: the shop clears it again               
+  PASS  seller: the cleared special comes off the mall                         special null
+  PASS  POST /api/seller/:slug/products: the shop saves a product              product 1589
+  PASS  seller: the saved price reaches the mall                               P9.99
+  PASS  a local service makes no claim about importing it                      Mobile banking setup — no saving claimed
+  PASS  GET /api/admin.stores[0]                                               
+  PASS  GET /api/admin.providers[0]                                            
+  PASS  GET /api/admin.balances[0]                                             
+  PASS  GET /api/admin.platform                                                
+  PASS  GET /api/admin                                                         
+  PASS  orders: a shop awaiting approval cannot take one                       Bitwise Computing & Gaming is still waiting for the Junction
+  PASS  POST /api/admin/stores/:id/approval: the admin approves the shop       approved
+  PASS  POST /api/admin/stores/:id/markup: the admin sets the markup           12%
+  PASS  seller: the shop is told about the markup                              Your shop markup is now 12%
+  PASS  the price the shopper is shown is the price the shopper is charged     shown P2632 · charged P2632
+  PASS  the mall levy is applied on top of the price in the shop               12% on P2350 = P2632
+  PASS  seller: the shop is told about the approval                            
+  PASS  admin: every action is written to the audit trail                      3 actions recorded
+  PASS  seller: the shop has an inbox with something in it                     2 notifications
+  PASS  POST /api/seller/:slug/notifications/read: the shop clears its inbox   
+  PASS  seller: the cleared inbox stays cleared                                2 notifications
+  PASS  GET /api/walk                                                          
+  PASS  walk: a route is measured from the hub                                 7 min
+===================================================================================================
+132/132 checks passed
