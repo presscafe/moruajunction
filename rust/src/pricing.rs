@@ -18,6 +18,10 @@ pub const CROSS_BORDER_VIABLE_MAX_MULTIPLE: f64 = 2.2;
 pub const CROSS_BORDER_LEAD_DAYS_MIN: i64 = 7;
 pub const CROSS_BORDER_LEAD_DAYS_MAX: i64 = 14;
 
+/// The Store Card™ credit: what a shopper is given against their next
+/// basket once their card at a shop is full. The shop funds it.
+pub const CARD_CREDIT_PULA: f64 = 50.0;
+
 /// Base platform commission on the seller's own price.
 pub const COMMISSION_RATE: f64 = 0.10;
 /// Buyer-facing service fee, capped so it never dominates a small basket.

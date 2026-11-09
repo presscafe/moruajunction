@@ -269,6 +269,22 @@ export interface Quote {
   }
   fulfilment: 'delivery' | 'pickup'
   area: string
+  /** What the shopper's Store Card gave back against this basket. */
+  cardCredits: { storeId: number; shop: string; creditPula: number }[]
+  cardCreditPula: number
+}
+
+export interface StoreCard {
+  storeId: number
+  shop: string
+  slug: string
+  icon: string
+  area: string
+  town: string
+  stamps: number
+  target: number
+  ready: boolean
+  creditPula: number
 }
 
 export interface Provider {

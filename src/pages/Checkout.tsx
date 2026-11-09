@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import type { Quote, StoreCard } from '../lib/api'
 import { useCart } from '../App'
 import { Empty, Spinner } from '../components/bits'
 import { pula } from '../lib/format'
@@ -21,6 +22,51 @@ export default function Checkout() {
   const [payment, setPayment] = useState('cod')
   const [placing, setPlacing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cardQuote, setCardQuote] = useState<Quote | null>(null)
+  const [cards, setCards] = useState<StoreCard[]>([])
+
+  // The Store Card is keyed to the shopper's number — the same number
+  // the rider calls — so the mall can find it without asking anyone to
+  // sign in. Enter the number and the card is found.
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 8) {
+      setCardQuote(null)
+      setCards([])
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      api
+        .post<Quote>('/cart/quote', {
+          lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+          area,
+          fulfilment,
+          phone,
+        })
+        .then((q) => {
+          if (!cancelled) setCardQuote(q)
+        })
+        .catch(() => {
+          /* the basket still works without the card */
+        })
+      api
+        .get<{ cards: StoreCard[] }>(`/card?phone=${encodeURIComponent(phone)}`)
+        .then((r) => {
+          if (!cancelled) setCards(r.cards ?? [])
+        })
+        .catch(() => {
+          /* no card, no problem */
+        })
+    }, 350)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [phone, lines, area, fulfilment])
+
+  // The card credit only counts once the mall knows whose card it is.
+  const shown = cardQuote ?? quote
 
   if (!lines.length) {
     return (
@@ -152,13 +198,34 @@ export default function Checkout() {
         </div>
 
         <div className="stack gap" style={{ position: 'sticky', top: '86px', alignSelf: 'start' }}>
+          {cards.length > 0 && (
+            <div className="card">
+              <h3 style={{ marginBottom: '0.6rem' }}>Your Store Card&trade;</h3>
+              <p className="tiny muted" style={{ marginBottom: '0.6rem' }}>
+                Keyed to your number — the same one the rider calls. Every order you complete at a
+                shop earns a stamp there; a full card is worth {pula(cards[0]?.creditPula ?? 50)}
+                off your next basket at that shop.
+              </p>
+              {cards.map((c) => (
+                <div key={c.storeId} className="kv">
+                  <span className="muted small">
+                    {c.icon} {c.shop}
+                  </span>
+                  <span className="small strong">
+                    {c.stamps} of {c.target} stamps
+                    {c.ready ? ' · credit ready' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="panel">
             <div className="panel-head">
               <span className="strong">Order</span>
-              <span className="tiny muted">{quote?.stores.length ?? 0} shops</span>
+              <span className="tiny muted">{shown?.stores.length ?? 0} shops</span>
             </div>
             <div className="panel-body">
-              {quote?.lines.map((line) => (
+              {shown?.lines.map((line) => (
                 <div key={line.productId} className="kv">
                   <span className="muted small">
                     {line.qty} × {line.name}
@@ -166,26 +233,34 @@ export default function Checkout() {
                   <span className="small strong">{pula(line.lineTotal)}</span>
                 </div>
               ))}
+              {shown?.cardCredits?.map((c) => (
+                <div key={c.storeId} className="kv">
+                  <span className="muted small">Store Card&trade; credit at {c.shop}</span>
+                  <span className="small strong" style={{ color: 'var(--green)' }}>
+                    −{pula(c.creditPula)}
+                  </span>
+                </div>
+              ))}
               <div className="divider" />
               <div className="kv">
                 <span className="muted">Subtotal</span>
-                <span className="strong">{pula(quote?.subtotal ?? 0)}</span>
+                <span className="strong">{pula(shown?.subtotal ?? 0)}</span>
               </div>
               <div className="kv">
                 <span className="muted">Delivery to {area}</span>
                 <span className="strong">
-                  {quote?.deliveryQuote?.feePula ? pula(quote.deliveryQuote.feePula) : 'FREE'}
+                  {shown?.deliveryQuote?.feePula ? pula(shown.deliveryQuote.feePula) : 'FREE'}
                 </span>
               </div>
               <div className="kv">
                 <span className="muted">Service fee</span>
-                <span className="strong">{pula(quote?.serviceFee ?? 0)}</span>
+                <span className="strong">{pula(shown?.serviceFee ?? 0)}</span>
               </div>
               <div className="divider" />
               <div className="kv">
                 <span className="strong">Total</span>
                 <span className="strong" style={{ fontSize: '1.2rem' }}>
-                  {pula(quote?.total ?? 0)}
+                  {pula(shown?.total ?? 0)}
                 </span>
               </div>
 
@@ -201,7 +276,7 @@ export default function Checkout() {
                 disabled={!ready || placing}
                 onClick={place}
               >
-                {placing ? 'Placing your order…' : `Place the order · ${pula(quote?.total ?? 0)}`}
+                {placing ? 'Placing your order…' : `Place the order · ${pula(shown?.total ?? 0)}`}
               </button>
               {!ready && (
                 <p className="tiny muted" style={{ marginTop: '0.5rem' }}>
