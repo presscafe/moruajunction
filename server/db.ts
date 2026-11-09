@@ -171,6 +171,29 @@ export function migrate() {
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL REFERENCES orders(id),
+    order_item_id INTEGER NOT NULL REFERENCES order_items(id),
+    product_id INTEGER NOT NULL REFERENCES products(id),
+    store_id INTEGER NOT NULL REFERENCES stores(id),
+    qty INTEGER NOT NULL DEFAULT 1,
+    amount_pula REAL NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'requested',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS card_stamps (
+    phone TEXT NOT NULL,
+    store_id INTEGER NOT NULL REFERENCES stores(id),
+    stamps INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (phone, store_id)
+  );
+
   CREATE TABLE IF NOT EXISTS disputes (
     id INTEGER PRIMARY KEY,
     order_id INTEGER REFERENCES orders(id),

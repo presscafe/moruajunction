@@ -5,12 +5,13 @@ import type { AdminData, Provider, Store } from '../lib/api'
 import { Badge, Empty, SectionHead, Spinner, Stat } from '../components/bits'
 import { dateTime, pula, pulaShort } from '../lib/format'
 
-type Tab = 'queue' | 'markup' | 'dispatch' | 'prices' | 'ledger' | 'audit'
+type Tab = 'queue' | 'markup' | 'dispatch' | 'returns' | 'prices' | 'ledger' | 'audit'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'queue', label: 'Approval queue' },
   { key: 'markup', label: 'Price markup' },
   { key: 'dispatch', label: 'Dispatch desk' },
+  { key: 'returns', label: 'Returns desk' },
   { key: 'prices', label: 'Price watch' },
   { key: 'ledger', label: 'Keeper’s Ledger' },
   { key: 'audit', label: 'Audit trail' },
@@ -19,6 +20,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function Admin() {
   const [data, setData] = useState<AdminData | null>(null)
   const [orders, setOrders] = useState<any[]>([])
+  const [returns, setReturns] = useState<any[]>([])
   const [tab, setTab] = useState<Tab>('queue')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -32,6 +34,12 @@ export default function Admin() {
         setOrders((d as any).orders ?? [])
       })
       .catch((e) => setError(e.message))
+    api
+      .get('/admin/returns')
+      .then((r: any) => setReturns(r.returns ?? []))
+      .catch(() => {
+        /* the console still works without the returns queue */
+      })
   }, [])
 
   useEffect(load, [load])
@@ -296,6 +304,91 @@ export default function Admin() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {tab === 'returns' && (
+        <div className="stack gap">
+          <SectionHead
+            eyebrow="Escrow & Return-to-Shop™"
+            title="The money goes back"
+            lede="A shopper sends an item back to the shop that sold it. The shop accepts it, and the mall settles the refund: the shopper gets their money, the shop's share goes back with the item, and the junction's levy is returned. The delivery is not — the rider already came."
+          />
+          {returns.length === 0 ? (
+            <Empty glyph="📦" title="Nothing to settle" body="No shopper has asked to send anything back." />
+          ) : (
+            <div className="panel">
+              <div className="panel-head">
+                <span className="strong">Returns</span>
+                <Badge tone={returns.filter((r) => r.status === 'accepted').length ? 'gold' : 'green'}>
+                  {returns.filter((r) => r.status === 'accepted').length} waiting on a refund
+                </Badge>
+              </div>
+              <div className="panel-body" style={{ overflowX: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Shop</th>
+                      <th>Order</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Settle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returns.map((r) => (
+                      <tr key={r.id}>
+                        <td className="small">
+                          {r.qty} × {r.product}
+                          <br />
+                          <span className="tiny muted">{r.reason}</span>
+                        </td>
+                        <td className="small">{r.shop}</td>
+                        <td className="mono small">{r.order_code}</td>
+                        <td className="strong">{pula(r.amount_pula)}</td>
+                        <td>
+                          <Badge
+                            tone={
+                              r.status === 'refunded'
+                                ? 'green'
+                                : r.status === 'declined'
+                                  ? 'red'
+                                  : r.status === 'accepted'
+                                    ? 'gold'
+                                    : 'blue'
+                            }
+                          >
+                            {r.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          {r.status === 'accepted' && (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={busy === `refund-${r.id}`}
+                              onClick={() =>
+                                act(
+                                  `refund-${r.id}`,
+                                  () => api.post(`/admin/returns/${r.id}/refund`, {}),
+                                  `${pula(r.amount_pula)} refunded to the shopper`,
+                                )
+                              }
+                            >
+                              Refund
+                            </button>
+                          )}
+                          {r.status === 'requested' && (
+                            <span className="tiny muted">Waiting on the shop</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

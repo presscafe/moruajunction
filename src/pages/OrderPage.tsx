@@ -15,10 +15,23 @@ const STEPS = [
   { key: 'delivered', label: 'Delivered', note: 'Money released from escrow' },
 ]
 
+const RETURN_COPY: Record<string, string> = {
+  requested: 'The shop has been asked to take it back',
+  accepted: 'The shop will take it back — collect it from them',
+  declined: 'The shop cannot take this one back',
+  refunded: 'Your money is on its way back',
+}
+
 export default function OrderPage() {
   const { code } = useParams()
   const [order, setOrder] = useState<Order | null>(null)
   const [items, setItems] = useState<any[]>([])
+  const [returns, setReturns] = useState<any[]>([])
+  const [reasons, setReasons] = useState<string[]>([])
+  const [sending, setSending] = useState<number | null>(null)
+  const [reason, setReason] = useState('')
+  const [qty, setQty] = useState(1)
+  const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -28,9 +41,41 @@ export default function OrderPage() {
       .then((r: any) => {
         setOrder(r.order)
         setItems(r.items ?? [])
+        setReturns(r.returns ?? [])
       })
       .catch((e) => setError(e.message))
+    api
+      .get(`/orders/${code}/returns`)
+      .then((r: any) => {
+        setReturns(r.returns ?? [])
+        if (r.reasons?.length) setReasons(r.reasons)
+      })
+      .catch(() => {
+        /* the order page still works without the return list */
+      })
   }, [code])
+
+  async function sendBack(itemId: number) {
+    setBusy(true)
+    setNote(null)
+    try {
+      await api.post(`/orders/${code}/returns`, {
+        itemId,
+        qty,
+        reason: reason || reasons[0] || 'Not what I ordered',
+      })
+      const r: any = await api.get(`/orders/${code}/returns`)
+      setReturns(r.returns ?? [])
+      setSending(null)
+      setQty(1)
+      setReason('')
+      setNote('Sent. The shop has been told and you will see what they decide here.')
+    } catch (e: any) {
+      setNote(e.message ?? 'That could not be sent back')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function advance() {
     setBusy(true)
@@ -135,6 +180,114 @@ export default function OrderPage() {
         </div>
 
         <div className="stack gap">
+          <div className="card">
+            <h3 style={{ marginBottom: '0.7rem' }}>Send something back</h3>
+            <p className="tiny muted" style={{ marginBottom: '0.7rem' }}>
+              Escrow &amp; Return-to-Shop&trade;: the item goes back to the shop that sold it, and
+              the mall refunds you. The delivery fee is not returned &mdash; the rider already came.
+            </p>
+            {returns.length > 0 && (
+              <div style={{ marginBottom: '0.8rem' }}>
+                {returns.map((r: any) => (
+                  <div key={r.id} className="kv">
+                    <span className="muted small">
+                      {r.qty} × {r.product}
+                      <span className="tiny muted"> · {r.reason}</span>
+                    </span>
+                    <span className="small strong">{pula(r.amount_pula)}</span>
+                  </div>
+                ))}
+                <div className="divider" />
+                {returns.map((r: any) => (
+                  <div key={`s-${r.id}`} className="tiny muted" style={{ marginBottom: '0.3rem' }}>
+                    <span className="strong">{r.shop}</span> — {RETURN_COPY[r.status] ?? r.status}
+                    {r.note ? ` — ${r.note}` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(order.status === 'out_for_delivery' || order.status === 'delivered') &&
+              items.map((it: any) => (
+                <div key={it.id} style={{ marginBottom: '0.6rem' }}>
+                  {sending === it.id ? (
+                    <div className="panel" style={{ margin: 0 }}>
+                      <div className="panel-body">
+                        <label className="tiny muted" htmlFor={`reason-${it.id}`}>
+                          What is wrong with it?
+                        </label>
+                        <select
+                          id={`reason-${it.id}`}
+                          className="input"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                        >
+                          {(reasons.length ? reasons : ['Not what I ordered']).map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                        {it.qty > 1 && (
+                          <>
+                            <label className="tiny muted" htmlFor={`qty-${it.id}`}>
+                              How many
+                            </label>
+                            <input
+                              id={`qty-${it.id}`}
+                              className="input"
+                              type="number"
+                              min={1}
+                              max={it.qty}
+                              value={qty}
+                              onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
+                            />
+                          </>
+                        )}
+                        <div className="row gap" style={{ marginTop: '0.6rem' }}>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => sendBack(it.id)}
+                            disabled={busy}
+                          >
+                            {busy ? 'Sending…' : `Send ${it.name} back`}
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setSending(null)}
+                            disabled={busy}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="row gap wrapflex" style={{ justifyContent: 'space-between' }}>
+                      <span className="small muted">
+                        {it.qty} × {it.name}
+                      </span>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setSending(it.id)
+                          setQty(1)
+                          setReason(reasons[0] ?? '')
+                        }}
+                      >
+                        Send this back
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            {note && <p className="tiny green" style={{ marginTop: '0.5rem' }}>{note}</p>}
+            {(order.status !== 'out_for_delivery' && order.status !== 'delivered') && (
+              <p className="tiny muted">
+                You can send an item back once it is on its way to you or has arrived.
+              </p>
+            )}
+          </div>
+
           <div className="card">
             <h3 style={{ marginBottom: '0.7rem' }}>Delivery</h3>
             {order.delivery_provider_name ? (
