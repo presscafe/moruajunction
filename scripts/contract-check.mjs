@@ -683,12 +683,12 @@ async function main() {
   )
 
   const withCard = await post('/api/cart/quote', {
-    area: 'Gaborone Central',
+    area: 'Gaborone West',
     lines: [{ productId: store.products[0].id, qty: 1 }],
     phone: cardPhone,
   })
   const withoutCard = await post('/api/cart/quote', {
-    area: 'Gaborone Central',
+    area: 'Gaborone West',
     lines: [{ productId: store.products[0].id, qty: 1 }],
   })
   record(

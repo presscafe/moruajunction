@@ -769,8 +769,7 @@ fn card_credit(conn: &Db, phone: &str, store_id: i64, store_total: f64) -> Optio
         "SELECT stamps FROM card_stamps WHERE phone = ?1 AND store_id = ?2",
         args(&[&phone as &dyn ToSql, &store_id]),
     )
-    .and_then(|r| r.get("stamps"))
-    .and_then(|v| v.as_i64())
+    .and_then(|r| r.get("stamps").and_then(|v| v.as_i64()))
     .unwrap_or(0);
     if stamps <= 0 {
         return None;
@@ -780,8 +779,7 @@ fn card_credit(conn: &Db, phone: &str, store_id: i64, store_total: f64) -> Optio
         "SELECT card_target FROM stores WHERE id = ?1",
         args(&[&store_id as &dyn ToSql]),
     )
-    .and_then(|r| r.get("card_target"))
-    .and_then(|v| v.as_i64())
+    .and_then(|r| r.get("card_target").and_then(|v| v.as_i64()))
     .unwrap_or(8);
     if stamps < target {
         return None;
