@@ -779,19 +779,19 @@ async function main() {
     record(
       'the price the shopper is shown is the price the shopper is charged',
       markedLine &&
-        Math.abs(markedLine.payableUnit - marked.data.product.payable_pula) < 0.01,
-      `shown P${marked.data.product.payable_pula} · charged P${markedLine?.payableUnit}`,
+        Math.abs(markedLine.payableUnit - marked.product.payable_pula) < 0.01,
+      `shown P${marked.product.payable_pula} · charged P${markedLine?.payableUnit}`,
     )
     const markedBase =
-      marked.data.product.is_special && marked.data.product.special_pula
-        ? marked.data.product.special_pula
-        : marked.data.product.price_pula
+      marked.product.is_special && marked.product.special_pula
+        ? marked.product.special_pula
+        : marked.product.price_pula
     const markedExpected =
-      Math.round(markedBase * (1 + marked.data.product.markup_pct / 100) * 100) / 100
+      Math.round(markedBase * (1 + marked.product.markup_pct / 100) * 100) / 100
     record(
       'the mall levy is applied on top of the price in the shop',
-      Math.abs(marked.data.product.payable_pula - markedExpected) < 0.01,
-      `${marked.data.product.markup_pct}% on P${markedBase} = P${marked.data.product.payable_pula}`,
+      Math.abs(marked.product.payable_pula - markedExpected) < 0.01,
+      `${marked.product.markup_pct}% on P${markedBase} = P${marked.product.payable_pula}`,
     )
     record(
       'seller: the shop is told about the approval',
