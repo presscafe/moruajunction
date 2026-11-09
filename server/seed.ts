@@ -1149,7 +1149,11 @@ export function seed(force = false): { stores: number; products: number } {
       const category = aisleNameToCategory(s.aisle)
       const key = p.key ?? p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
       const isSpecial = p.special ? 1 : 0
-      const price = p.special ?? p.price
+      // The shelf price stays on the product. The special is the price it
+      // is on offer at, and the shelf price is what it was reduced from —
+      // so the shopper can see what they are saving.
+      const price = p.price
+      const was = p.special ? p.price : (p.was ?? null)
       insProduct.run(
         `MJ-${String(seq++).padStart(5, '0')}`,
         storeId,
@@ -1160,13 +1164,15 @@ export function seed(force = false): { stores: number; products: number } {
         p.unit ?? 'each',
         p.icon,
         price,
-        p.was ?? null,
+        was,
         p.saZar,
         p.kg,
         dutyForCategory(category),
         p.unit === 'service' || p.unit === 'bundle' || p.unit === 'credit' ? 'Gaborone' : 'Imported',
         p.stock ?? 10,
-        daysAgoIso(Math.floor(Math.random() * 180), 7, 15),
+        // Derived from the sequence rather than random, so the dataset is
+        // the same file every time it is built.
+        daysAgoIso(Math.floor((seq * 7) % 180), 7, 15),
         round2(4.2 + ((seq * 7) % 8) / 10),
         Math.floor(4 + ((seq * 3) % 120)),
         Math.floor(20 + ((seq * 11) % 400)),
@@ -1294,7 +1300,10 @@ export function seed(force = false): { stores: number; products: number } {
         const price = round2(item.price * branch.factor)
         const onSpecial = (seq + key.length) % 7 === 0
         const specialPula = onSpecial ? round2(price * 0.9) : null
-        const listed = onSpecial ? specialPula! : price
+        // The shelf price stays on the product whether it is on special or
+        // not; the special is the price it is on offer at, and the shelf
+        // price is what it was reduced from.
+        const listed = price
         const origin =
           item.category === 'Fresh Produce & Butchery'
             ? 'Local \u2014 Botswana'

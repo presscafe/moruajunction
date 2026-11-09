@@ -73,7 +73,12 @@ export function StoreCard({ store }: { store: Store }) {
 
 export function ProductCard({ product, store }: { product: Product; store?: Store }) {
   const sellable = product.stock > 0
-  const special = product.is_special && product.special_pula
+  // The price on the card is the price the shopper pays: the shop's
+  // promotional price if it is on special, plus the mall's declared levy.
+  // Nothing else — what you see here is what the basket will charge.
+  const price = product.payable_pula ?? product.price_pula
+  const was = product.was_price_pula && product.was_price_pula > price ? product.was_price_pula : null
+  const special = product.is_special
   const { add } = useCart()
   const [added, setAdded] = useState(false)
   function quickAdd(e: React.MouseEvent) {
@@ -91,7 +96,9 @@ export function ProductCard({ product, store }: { product: Product; store?: Stor
         style={{ background: `linear-gradient(150deg, ${store?.accent_soft ?? '#eef1f5'}, #ffffff)` }}
       >
         <span>{product.icon}</span>
-        {special ? <span className="ribbon">Special · {pula(special)}</span> : null}
+        {special ? (
+          <span className="ribbon">{was ? `Special · save ${pula(was - price)}` : 'Special'}</span>
+        ) : null}
         {!sellable ? <span className="ribbon">Out of stock</span> : null}
         {sellable && (
           <button
@@ -107,13 +114,11 @@ export function ProductCard({ product, store }: { product: Product; store?: Stor
         <span className="product-name">{product.name}</span>
         <span className="product-blurb">{product.blurb}</span>
         <div className="price-row">
-          <span className="price">{pula(product.price_pula)}</span>
-          {product.was_price_pula && product.was_price_pula > product.price_pula && (
+          <span className="price">{pula(price)}</span>
+          {was && (
             <>
-              <span className="price-was">{pula(product.was_price_pula)}</span>
-              <span className="price-save">
-                save {pula(product.was_price_pula - product.price_pula)}
-              </span>
+              <span className="price-was">{pula(was)}</span>
+              <span className="price-save">save {pula(was - price)}</span>
             </>
           )}
         </div>
@@ -136,6 +141,32 @@ export function ProductCard({ product, store }: { product: Product; store?: Stor
 export function LandLocalPanel({ landed }: { landed: Landed }) {
   if (!landed) return null
   const wins = landed.localWins
+  // A service the shop provides itself — a free counter-side setup, say —
+  // has no South African price to compare against. There is nothing to
+  // import, so the mall does not pretend otherwise.
+  const comparable = landed.saPula > 0
+  if (!comparable) {
+    return (
+      <div className="land-panel">
+        <div className="land-head" style={{ background: 'rgba(61,145,96,0.16)' }}>
+          <span className="land-verdict" style={{ color: '#7fd3a3' }}>
+            🏠 Provided here in Botswana
+          </span>
+          <span className="tiny muted">nothing to import</span>
+        </div>
+        <div className="land-rows">
+          <div className="land-row">
+            <span className="muted">Price here in Botswana</span>
+            <span className="strong">{pula(landed.localPula)}</span>
+          </div>
+          <div className="land-row">
+            <span className="muted">Served by the shop</span>
+            <span>in store, no import, no lead time</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="land-panel">
       <div

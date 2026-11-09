@@ -56,7 +56,13 @@ export default function Aisle() {
 
       <p className="tiny muted" style={{ marginTop: '1.6rem' }}>
         Aisle prices are set by each shop. Morua shows you what the same item costs elsewhere in
-        Botswana so you can judge it — starting at {pula(data.products[0]?.price_pula ?? 0)}.
+        Botswana so you can judge it — starting at{' '}
+        {pula(
+          data.products.length
+            ? Math.min(...data.products.map((p) => p.payable_pula ?? p.price_pula))
+            : 0,
+        )}
+        .
       </p>
     </div>
   )

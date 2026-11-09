@@ -402,6 +402,15 @@ async function main() {
   } else {
     skip('mall: a shop awaiting approval is still listed', 'no shop is pending on this service')
   }
+  // A special on the front page has to be on sale in the shop that is
+  // actually selling it. The mall handler once matched the product id
+  // against the store id, so every special was credited to the wrong shop.
+  const specials = mall.specials
+  record(
+    'mall: a special is on sale in the shop that sells it',
+    specials.length > 0 && specials.every((p) => p.store && p.store.id === p.store_id),
+    specials.length ? `${specials.length} specials` : 'no specials',
+  )
 
   /* ---- the God's-eye plan ---- */
   const plan = await get('/api/mall/plan')
@@ -611,6 +620,38 @@ async function main() {
     `special ${afterSpecial.product.special_pula}`,
   )
 
+  const specialQuote = await post('/api/cart/quote', {
+    area: 'Gaborone Central',
+    lines: [{ productId: shelfProduct.id, qty: 1 }],
+  })
+  const specialLine = specialQuote.data.lines.find((l) => l.productId === shelfProduct.id)
+  const specialExpected =
+    Math.round(7.5 * (1 + afterSpecial.product.markup_pct / 100) * 100) / 100
+  record(
+    'a special is charged at the special price',
+    specialLine && Math.abs(specialLine.payableUnit - specialExpected) < 0.01,
+    `charged P${specialLine?.payableUnit}, special P7.5`,
+  )
+  record(
+    'the shopper can see what the special saved them',
+    afterSpecial.product.was_price_pula === originalPrice,
+    `was P${afterSpecial.product.was_price_pula}, shelf P${originalPrice}`,
+  )
+
+  await post(`/api/seller/${first.slug}/products`, {
+    id: shelfProduct.id,
+    name: shelfProduct.name,
+    blurb: shelfProduct.blurb,
+    pricePula: originalPrice + 5,
+    stock: originalStock,
+  })
+  const afterRePrice = await get(`/api/products/${shelfProduct.id}`)
+  record(
+    'the price it was reduced from follows the shelf price',
+    afterRePrice.product.was_price_pula === originalPrice + 5,
+    `was P${afterRePrice.product.was_price_pula}, shelf P${originalPrice + 5}`,
+  )
+
   const cleared = await post(`/api/seller/${first.slug}/special`, {
     productId: shelfProduct.id,
     clear: true,
@@ -654,6 +695,23 @@ async function main() {
     productId: shelfProduct.id,
     stock: originalStock,
   })
+
+  /* ---- a service the shop provides itself has nothing to import ---- */
+  const local = await get('/api/stores/techno-village')
+  const serviceProduct = local.products.find((p) => p.sa_price_zar === 0)
+  if (serviceProduct) {
+    const detail = await get(`/api/products/${serviceProduct.id}`)
+    record(
+      'a local service makes no claim about importing it',
+      detail.product.landed.localWins === false && detail.product.landed.savingPula === 0,
+      `${serviceProduct.name} — no saving claimed`,
+    )
+  } else {
+    skip(
+      'a local service makes no claim about importing it',
+      'no counter-side service found on this service',
+    )
+  }
 
   /* ---- the admin console ---- */
   const admin = await get('/api/admin')
@@ -708,6 +766,32 @@ async function main() {
       'seller: the shop is told about the markup',
       afterMarkup.notifications.some((n) => String(n.title).includes('markup')),
       afterMarkup.notifications[0]?.title,
+    )
+
+    // What the shopper is shown must be what the shopper is charged. The
+    // card, the product page and the basket all read the same price.
+    const marked = await get(`/api/products/${pendingProduct.id}`)
+    const markedQuote = await post('/api/cart/quote', {
+      area: 'Gaborone Central',
+      lines: [{ productId: pendingProduct.id, qty: 1 }],
+    })
+    const markedLine = markedQuote.data.lines.find((l) => l.productId === pendingProduct.id)
+    record(
+      'the price the shopper is shown is the price the shopper is charged',
+      markedLine &&
+        Math.abs(markedLine.payableUnit - marked.product.payable_pula) < 0.01,
+      `shown P${marked.product.payable_pula} · charged P${markedLine?.payableUnit}`,
+    )
+    const markedBase =
+      marked.product.is_special && marked.product.special_pula
+        ? marked.product.special_pula
+        : marked.product.price_pula
+    const markedExpected =
+      Math.round(markedBase * (1 + marked.product.markup_pct / 100) * 100) / 100
+    record(
+      'the mall levy is applied on top of the price in the shop',
+      Math.abs(marked.product.payable_pula - markedExpected) < 0.01,
+      `${marked.product.markup_pct}% on P${markedBase} = P${marked.product.payable_pula}`,
     )
     record(
       'seller: the shop is told about the approval',
