@@ -647,6 +647,92 @@ async function main() {
     ledgerAfter.entries.some((e) => e.kind === 'refund'),
   )
 
+  /* ---- the store card ---- */
+  const cardPhone = '+267 71 000 000'
+  const cardUrl = `/api/card?phone=${encodeURIComponent(cardPhone)}`
+  const card = await get(cardUrl)
+  checkShape('GET /api/card', card, { cards: 'array' })
+  const myCard = card.cards.find((c) => c.storeId === store.store.id)
+  record(
+    'a delivered order earns a stamp on the card',
+    Boolean(myCard) && myCard.stamps >= 1,
+    `${myCard?.stamps} of ${myCard?.target} stamps`,
+  )
+
+  // Fill the card and see what it is worth.
+  let state = myCard
+  let guard = 0
+  while (state && state.stamps < state.target && guard < 12) {
+    const filled = await post('/api/orders', {
+      customerName: 'Contract Check',
+      customerPhone: cardPhone,
+      customerArea: 'Gaborone West',
+      paymentMethod: 'cod',
+      lines: [{ productId: store.products[0].id, qty: 1 }],
+    })
+    for (const status of ['confirmed', 'picking', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']) {
+      await post(`/api/orders/${filled.data.code}/advance`, { status })
+    }
+    guard += 1
+    state = (await get(cardUrl)).cards.find((c) => c.storeId === store.store.id)
+  }
+  record(
+    'the card fills up as the shopper keeps shopping',
+    Boolean(state) && state.ready === true,
+    `${state?.stamps} of ${state?.target} stamps`,
+  )
+
+  const withCard = await post('/api/cart/quote', {
+    area: 'Gaborone West',
+    lines: [{ productId: store.products[0].id, qty: 1 }],
+    phone: cardPhone,
+  })
+  const withoutCard = await post('/api/cart/quote', {
+    area: 'Gaborone West',
+    lines: [{ productId: store.products[0].id, qty: 1 }],
+  })
+  record(
+    'a full card earns a credit against the basket',
+    (withCard.data.cardCredits?.length ?? 0) === 1 && withCard.data.cardCreditPula === 50,
+    `P${withCard.data.cardCreditPula}`,
+  )
+  record(
+    'the credit is taken off what the shopper pays',
+    Math.abs(withoutCard.data.subtotal - withCard.data.subtotal - 50) < 0.01,
+    `P${withoutCard.data.subtotal} → P${withCard.data.subtotal}`,
+  )
+  record(
+    'the same basket without the card is not discounted',
+    (withoutCard.data.cardCredits?.length ?? 0) === 0,
+  )
+
+  const cardOrder = await post('/api/orders', {
+    customerName: 'Contract Check',
+    customerPhone: cardPhone,
+    customerArea: 'Gaborone West',
+    paymentMethod: 'cod',
+    lines: [{ productId: store.products[0].id, qty: 1 }],
+  })
+  record(
+    'the card is spent on the order that used it',
+    Math.abs(cardOrder.data.quote.total - withCard.data.total) < 0.01,
+    `P${cardOrder.data.quote.total}`,
+  )
+  const afterCard = await get(cardUrl)
+  const spentCard = afterCard.cards.find((c) => c.storeId === store.store.id)
+  record(
+    'the card starts again once the credit is used',
+    spentCard?.stamps === 0,
+    `${spentCard?.stamps} stamps`,
+  )
+  const ledgerWithCard = await get('/api/ledger')
+  const sumWithCard = ledgerWithCard.balances.reduce((n, b) => n + b.balance, 0)
+  record(
+    'the books still balance after a card credit',
+    Math.abs(sumWithCard) < 0.01,
+    `balance ${sumWithCard.toFixed(2)}`,
+  )
+
   /* ---- the seller console ---- */
   const seller = await get(`/api/seller/${first.slug}`)
   checkShape('GET /api/seller/:slug', seller, SELLER)

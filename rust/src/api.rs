@@ -2,7 +2,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use axum::extract::{Path, State};
+use std::collections::HashMap;
+
+use axum::extract::{Path, Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use rusqlite::params;
@@ -13,7 +15,8 @@ use serde_json::{json, Map, Value};
 use crate::db::{exec, last_id, row, rows, Db};
 use crate::ledger::{self, Entry};
 use crate::pricing::{
-    delivery_quote, landed_quote, marked_price, price_band, round2, service_fee, COMMISSION_RATE,
+    delivery_quote, landed_quote, marked_price, price_band, round2, service_fee, CARD_CREDIT_PULA,
+    COMMISSION_RATE,
 };
 use crate::timeutil::{minutes_between, now_iso};
 
@@ -36,6 +39,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/providers", get(providers))
         .route("/areas", get(areas))
         .route("/cart/quote", post(cart_quote))
+        .route("/card", get(card))
         .route("/orders", post(create_order))
         .route("/orders/:code", get(order_detail))
         .route("/orders/:code/advance", post(advance_order))
@@ -732,13 +736,70 @@ struct QuoteLine {
     tradeable: bool,
 }
 
+/// A line of a basket, before the money is worked out.
+struct Draft {
+    product: Value,
+    store: Value,
+    qty: i64,
+    base: f64,
+    landed: Value,
+    tradeable: bool,
+    markup_pct: f64,
+}
+
+/// The shopper's number, as the stores it is keyed by: the last eight
+/// digits, so "+267 71 000 000" and "71000000" are the same shopper.
+fn normalise_phone(phone: &str) -> String {
+    let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.len() > 8 {
+        digits[digits.len() - 8..].to_string()
+    } else {
+        digits
+    }
+}
+
+/// What the shopper's Store Card is worth against this basket, if it is
+/// full. The shop that issued the card funds the credit.
+fn card_credit(conn: &Db, phone: &str, store_id: i64, store_total: f64) -> Option<f64> {
+    if phone.is_empty() || store_total <= 0.0 {
+        return None;
+    }
+    let stamps = row(
+        conn,
+        "SELECT stamps FROM card_stamps WHERE phone = ?1 AND store_id = ?2",
+        args(&[&phone as &dyn ToSql, &store_id]),
+    )
+    .and_then(|r| r.get("stamps").and_then(|v| v.as_i64()))
+    .unwrap_or(0);
+    if stamps <= 0 {
+        return None;
+    }
+    let target = row(
+        conn,
+        "SELECT card_target FROM stores WHERE id = ?1",
+        args(&[&store_id as &dyn ToSql]),
+    )
+    .and_then(|r| r.get("card_target").and_then(|v| v.as_i64()))
+    .unwrap_or(8);
+    if stamps < target {
+        return None;
+    }
+    let credit = round2(store_total.min(CARD_CREDIT_PULA));
+    if credit <= 0.0 {
+        None
+    } else {
+        Some(credit)
+    }
+}
+
 fn build_quote(
     conn: &Db,
     lines: &Value,
     area: &str,
     fulfilment: &str,
+    phone: &str,
 ) -> (Vec<QuoteLine>, Value) {
-    let mut out: Vec<QuoteLine> = Vec::new();
+    let mut drafts: Vec<Draft> = Vec::new();
     if let Some(arr) = lines.as_array() {
         for line in arr {
             let pid = field(line, "productId", "product_id")
@@ -776,32 +837,105 @@ fn build_quote(
                 .and_then(|v| v.as_str())
                 .unwrap_or("approved")
                 == "approved";
-            let payable_unit = marked_price(base, markup_pct);
-            let line_total = round2(payable_unit * qty as f64);
-            let base_total = round2(base * qty as f64);
-            let commission = round2(base_total * COMMISSION_RATE);
-            let markup = round2(line_total - base_total);
             let landed = landed_quote(
                 base,
                 product.get("sa_price_zar").and_then(|v| v.as_f64()).unwrap_or(0.0),
                 product.get("weight_kg").and_then(|v| v.as_f64()).unwrap_or(0.5),
                 product.get("duty_rate").and_then(|v| v.as_f64()).unwrap_or(0.0),
             );
-            out.push(QuoteLine {
+            drafts.push(Draft {
                 product,
                 store,
-                tradeable,
                 qty,
-                unit_price: base,
-                payable_unit,
-                line_total,
-                commission,
-                seller_net: round2(base_total - commission),
-                markup,
+                base,
                 landed,
+                tradeable,
+                markup_pct,
             });
         }
     }
+
+    // What each shop in this basket is worth, before any card credit.
+    let mut store_totals: Vec<(i64, f64)> = Vec::new();
+    for d in &drafts {
+        let sid = d.store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let total = d.base * d.qty as f64;
+        match store_totals.iter_mut().find(|(s, _)| *s == sid) {
+            Some(t) => t.1 += total,
+            None => store_totals.push((sid, total)),
+        }
+    }
+
+    // The Store Card™: a full card earns a credit against this basket.
+    let key = normalise_phone(phone);
+    let mut credits: Vec<(i64, f64)> = Vec::new();
+    for (sid, total) in &store_totals {
+        if let Some(credit) = card_credit(conn, &key, *sid, *total) {
+            credits.push((*sid, credit));
+        }
+    }
+
+    // The money, with the card credit taken off the shop's own lines.
+    let mut out: Vec<QuoteLine> = Vec::new();
+    for d in &drafts {
+        let sid = d.store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+        let base_total = d.base * d.qty as f64;
+        let store_total = store_totals
+            .iter()
+            .find(|(s, _)| *s == sid)
+            .map(|(_, t)| *t)
+            .unwrap_or(0.0);
+        let credit = credits
+            .iter()
+            .find(|(s, _)| *s == sid)
+            .map(|(_, c)| *c)
+            .unwrap_or(0.0);
+        // The credit is spread across the shop's lines in proportion to
+        // what each of them is worth.
+        let discount_total = if store_total > 0.0 {
+            credit * base_total / store_total
+        } else {
+            0.0
+        };
+        let discount_unit = if d.qty > 0 {
+            discount_total / d.qty as f64
+        } else {
+            0.0
+        };
+        let base = (d.base - discount_unit).max(0.0);
+        let payable_unit = marked_price(base, d.markup_pct);
+        let line_total = round2(payable_unit * d.qty as f64);
+        let base_total = round2(base * d.qty as f64);
+        let commission = round2(base_total * COMMISSION_RATE);
+        let markup = round2(line_total - base_total);
+        out.push(QuoteLine {
+            product: d.product.clone(),
+            store: d.store.clone(),
+            tradeable: d.tradeable,
+            qty: d.qty,
+            unit_price: base,
+            payable_unit,
+            line_total,
+            commission,
+            seller_net: round2(base_total - commission),
+            markup,
+            landed: d.landed.clone(),
+        });
+    }
+
+    // What the card gave back, for the shopper to see.
+    let card_credits: Vec<Value> = credits
+        .iter()
+        .map(|(sid, credit)| {
+            let shop = drafts
+                .iter()
+                .find(|d| d.store.get("id").and_then(|v| v.as_i64()).unwrap_or(0) == *sid)
+                .and_then(|d| d.store.get("name").and_then(|v| v.as_str()))
+                .unwrap_or("A shop")
+                .to_string();
+            json!({"storeId": sid, "shop": shop, "creditPula": credit})
+        })
+        .collect();
 
     let subtotal = round2(out.iter().map(|l| l.line_total).sum());
     let delivery = if fulfilment == "pickup" {
@@ -883,6 +1017,8 @@ fn build_quote(
         "deliveryQuote": delivery_quote(area, subtotal),
         "fulfilment": fulfilment,
         "area": area,
+        "cardCredits": card_credits,
+        "cardCreditPula": round2(credits.iter().map(|(_, c)| *c).sum()),
     });
     (out, quote)
 }
@@ -895,8 +1031,51 @@ async fn cart_quote(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         .and_then(|v| v.as_str())
         .unwrap_or("delivery");
     let lines = field(&body, "lines", "items").cloned().unwrap_or(json!([]));
-    let (_, quote) = build_quote(&conn, &lines, area, fulfilment);
+    // A Store Card is keyed to the shopper's number, so the mall can
+    // find the card without asking anybody to sign in.
+    let phone = str_field(&body, "phone", "phone")
+        .or_else(|| str_field(&body, "customerPhone", "customer_phone"))
+        .unwrap_or("")
+        .to_string();
+    let (_, quote) = build_quote(&conn, &lines, area, fulfilment, &phone);
     Json(quote)
+}
+
+/// The shopper's Store Cards: one per shop they have been served by.
+async fn card(State(state): S, Query(params): Query<HashMap<String, String>>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let phone = params.get("phone").cloned().unwrap_or_default();
+    let key = normalise_phone(&phone);
+    if key.is_empty() {
+        return Json(json!({"phone": "", "cards": []}));
+    }
+    let found = rows(
+        &conn,
+        "SELECT cs.store_id, cs.stamps, s.card_target, s.name, s.slug, s.icon, s.area, s.town
+         FROM card_stamps cs JOIN stores s ON s.id = cs.store_id
+         WHERE cs.phone = ?1 ORDER BY cs.stamps DESC, s.name",
+        args(&[&key as &dyn ToSql]),
+    );
+    let cards: Vec<Value> = found
+        .iter()
+        .map(|r| {
+            let stamps = r.get("stamps").and_then(|v| v.as_i64()).unwrap_or(0);
+            let target = r.get("card_target").and_then(|v| v.as_i64()).unwrap_or(8);
+            json!({
+                "storeId": r.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0),
+                "shop": r.get("name").and_then(|v| v.as_str()).unwrap_or("A shop"),
+                "slug": r.get("slug").and_then(|v| v.as_str()).unwrap_or(""),
+                "icon": r.get("icon").and_then(|v| v.as_str()).unwrap_or("🏬"),
+                "area": r.get("area").and_then(|v| v.as_str()).unwrap_or(""),
+                "town": r.get("town").and_then(|v| v.as_str()).unwrap_or(""),
+                "stamps": stamps,
+                "target": target,
+                "ready": stamps >= target,
+                "creditPula": CARD_CREDIT_PULA,
+            })
+        })
+        .collect();
+    Json(json!({"phone": key, "cards": cards}))
 }
 
 async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
@@ -911,7 +1090,11 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         .unwrap_or("delivery")
         .to_string();
     let lines = field(&body, "lines", "items").cloned().unwrap_or(json!([]));
-    let (quote_lines, quote) = build_quote(&conn, &lines, &area, &fulfilment);
+    // The shopper's number is also their Store Card.
+    let customer_phone = str_field(&body, "customerPhone", "customer_phone")
+        .unwrap_or("+267 000 0000")
+        .to_string();
+    let (quote_lines, quote) = build_quote(&conn, &lines, &area, &fulfilment, &customer_phone);
 
     if quote_lines.is_empty() {
         return Json(json!({"error": "Your basket is empty."}));
@@ -940,9 +1123,6 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
     let code = format!("MJ-{}-{}", &stamp[0..4], serial);
     let customer_name = str_field(&body, "customerName", "customer_name")
         .unwrap_or("Guest")
-        .to_string();
-    let customer_phone = str_field(&body, "customerPhone", "customer_phone")
-        .unwrap_or("+267 000 0000")
         .to_string();
     let address = body
         .get("address")
@@ -1002,6 +1182,7 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
         ]),
     );
     let order_id = last_id(&conn);
+    let card_key = normalise_phone(&customer_phone);
 
     for l in &quote_lines {
         let pid = l.product.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -1030,6 +1211,18 @@ async fn create_order(State(state): S, Json(body): Json<Value>) -> Json<Value> {
     }
 
     let total = quote.get("total").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    // The card has been spent: it starts again from empty at that shop.
+    if let Some(credits) = quote.get("cardCredits").and_then(|v| v.as_array()) {
+        for credit in credits {
+            let store_id = credit.get("storeId").and_then(|v| v.as_i64()).unwrap_or(0);
+            exec(
+                &conn,
+                "UPDATE card_stamps SET stamps = 0, updated_at = ?1 WHERE phone = ?2 AND store_id = ?3",
+                args(&[&stamp as &dyn ToSql, &card_key as &dyn ToSql, &store_id]),
+            );
+        }
+    }
+
     ledger::post(
         &conn,
         &[
@@ -1209,6 +1402,36 @@ async fn advance_order(
                 "UPDATE orders SET escrow_state = 'released' WHERE id = ?1",
                 args(&[&id as &dyn ToSql]),
             );
+            // The shopper's Store Card earns a stamp at every shop that
+            // served them, and the shop's own card counts the stamps it
+            // has handed out.
+            let phone = normalise_phone(
+                order
+                    .get("customer_phone")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(""),
+            );
+            if !phone.is_empty() {
+                let shops = rows(
+                    &conn,
+                    "SELECT DISTINCT store_id FROM order_items WHERE order_id = ?1",
+                    args(&[&id as &dyn ToSql]),
+                );
+                for shop in &shops {
+                    let sid = shop.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
+                    exec(
+                        &conn,
+                        "INSERT INTO card_stamps (phone, store_id, stamps, updated_at) VALUES (?1,?2,1,?3)
+                         ON CONFLICT(phone, store_id) DO UPDATE SET stamps = stamps + 1, updated_at = ?3",
+                        args(&[&phone as &dyn ToSql, &sid, &ts as &dyn ToSql]),
+                    );
+                    exec(
+                        &conn,
+                        "UPDATE stores SET card_stamps = card_stamps + 1 WHERE id = ?1",
+                        args(&[&sid]),
+                    );
+                }
+            }
             ledger::post(
                 &conn,
                 &[

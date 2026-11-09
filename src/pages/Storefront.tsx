@@ -219,8 +219,9 @@ export default function Storefront() {
               <div className="card">
                 <h3 style={{ marginBottom: '0.6rem' }}>Store Card&trade;</h3>
                 <p className="small muted">
-                  {stamps} of {target} stamps collected. Every ten completed orders earns a P50
-                  credit against the next basket.
+                  {stamps} of {target} stamps collected. Every order you complete here earns a
+                  stamp, and a full card is worth a P50 credit against your next basket at this
+                  shop.
                 </p>
                 <div className="band-bar">
                   <div
