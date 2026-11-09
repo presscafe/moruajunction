@@ -55,6 +55,21 @@ export default function OrderPage() {
       })
   }, [code])
 
+  async function confirmDelivery() {
+    setBusy(true)
+    setNote(null)
+    try {
+      await api.post(`/orders/${code}/confirm`, {})
+      const r: any = await api.get(`/orders/${code}`)
+      setOrder(r.order)
+      setNote('Thank you — the shop has been paid and your card has a stamp on it.')
+    } catch (e: any) {
+      setNote(e.message ?? 'That could not be confirmed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function sendBack(itemId: number) {
     setBusy(true)
     setNote(null)
@@ -345,6 +360,21 @@ export default function OrderPage() {
               something is wrong, Escrow &amp; Return-to-Shop&trade; sends it straight back to the
               shop that sold it.
             </p>
+            {order.escrow_state !== 'released' && order.status === 'delivered' && (
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ marginTop: '0.7rem' }}
+                onClick={confirmDelivery}
+                disabled={busy}
+              >
+                {busy ? 'Releasing…' : 'Everything arrived — release the payment'}
+              </button>
+            )}
+            {order.escrow_state === 'released' && (
+              <p className="tiny green" style={{ marginTop: '0.6rem' }}>
+                Payment released — the shop has been paid.
+              </p>
+            )}
           </div>
 
           <Link to="/shop" className="btn btn-ghost">
