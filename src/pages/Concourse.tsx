@@ -169,7 +169,7 @@ export default function Concourse() {
                         <td>
                           {p.icon} {p.name}
                         </td>
-                        <td className="strong">{pula(p.price_pula)}</td>
+                        <td className="strong">{pula(p.payable_pula ?? p.price_pula)}</td>
                         <td className="muted">{pula(p.landed?.landedPula ?? 0)}</td>
                         <td className="green strong">
                           {p.landed?.localWins ? pula(p.landed.savingPula) : '—'}

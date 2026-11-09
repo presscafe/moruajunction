@@ -151,7 +151,11 @@ fn shelf_freshness(synced: Option<&str>) -> Value {
 fn product_decorated(conn: &Db, product: &Value, store: Option<&Value>) -> Value {
     let mut map = product.as_object().cloned().unwrap_or_default();
     let id = product.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
-    let price = product.get("price_pula").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    // Two prices, on purpose: the shelf price is what the shop publishes
+    // and what Price Guard compares with the other shops; the effective
+    // price is what the shopper is charged while the item is on special.
+    let shelf_price = product.get("price_pula").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let price = effective_price(product);
     let sa_zar = product.get("sa_price_zar").and_then(|v| v.as_f64()).unwrap_or(0.0);
     let kg = product.get("weight_kg").and_then(|v| v.as_f64()).unwrap_or(0.5);
     let duty = product.get("duty_rate").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -182,7 +186,7 @@ fn product_decorated(conn: &Db, product: &Value, store: Option<&Value>) -> Value
         json!(product.get("is_special").and_then(|v| v.as_i64()).unwrap_or(0) == 1),
     );
     map.insert("landed".into(), landed_quote(price, sa_zar, kg, duty));
-    map.insert("band".into(), price_band(&match_key, price, &peers));
+    map.insert("band".into(), price_band(&match_key, shelf_price, &peers));
     map.insert(
         "shelf".into(),
         shelf_freshness(product.get("stock_synced_at").and_then(|v| v.as_str())),
@@ -193,6 +197,20 @@ fn product_decorated(conn: &Db, product: &Value, store: Option<&Value>) -> Value
         map.insert("store".into(), store_decorated(s));
     }
     Value::Object(map)
+}
+
+/// The price the shopper is charged for a product: the shop's promotional
+/// price while it is on special, otherwise its shelf price. The admin's
+/// markup is applied on top of this, never on the shelf price of an item
+/// that is on offer.
+fn effective_price(product: &Value) -> f64 {
+    let on_special = product.get("is_special").and_then(|v| v.as_i64()).unwrap_or(0) == 1;
+    if on_special {
+        if let Some(special) = product.get("special_pula").and_then(|v| v.as_f64()) {
+            return special;
+        }
+    }
+    product.get("price_pula").and_then(|v| v.as_f64()).unwrap_or(0.0)
 }
 
 fn find_store(conn: &Db, slug: &str) -> Option<Value> {
@@ -270,8 +288,13 @@ async fn mall(State(state): S) -> Json<Value> {
     let specials: Vec<Value> = product_rows
         .iter()
         .map(|p| {
+            // The special belongs to the shop that sells it. Matching the
+            // product id against the store id credited every special on the
+            // front page to the wrong shop, or to none at all.
             let store = store_rows.iter().find(|s| {
-                s.get("id").and_then(|v| v.as_i64()) == p.get("id").and_then(|v| v.as_i64())
+                let store_id = s.get("id").and_then(|v| v.as_i64());
+                let product_store_id = p.get("store_id").and_then(|v| v.as_i64());
+                store_id == product_store_id
             });
             product_decorated(&conn, p, store)
         })
@@ -735,7 +758,10 @@ fn build_quote(
                 )
                 .unwrap_or(json!({})),
             );
-            let base = product.get("price_pula").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            // A product on special is charged at the special price, and the
+            // commission and the seller's share are worked out of that same
+            // price, so the books still balance to the cent.
+            let base = effective_price(&product);
             let markup_pct = store.get("markup_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
             // A shop waiting on the admin approval queue may be browsed but
             // may not trade.
@@ -1320,8 +1346,12 @@ async fn seller_save_product(
     if let Some(pid) = product_id {
         exec(
             &conn,
+            // When the shop moves the shelf price of an item that is on
+            // offer, the price it was reduced from moves with it.
             "UPDATE products SET name = COALESCE(NULLIF(?1,''), name), blurb = COALESCE(?2, blurb),
-                price_pula = COALESCE(?3, price_pula), stock = COALESCE(?4, stock), stock_synced_at = ?5
+                price_pula = COALESCE(?3, price_pula),
+                was_price_pula = CASE WHEN is_special = 1 AND ?3 IS NOT NULL THEN ?3 ELSE was_price_pula END,
+                stock = COALESCE(?4, stock), stock_synced_at = ?5
              WHERE id = ?6 AND store_id = ?7",
             args(&[
                 &name as &dyn ToSql,
@@ -1417,14 +1447,18 @@ async fn seller_set_special(
     if body.get("clear").and_then(|v| v.as_bool()).unwrap_or(false) {
         exec(
             &conn,
-            "UPDATE products SET is_special = 0, special_pula = NULL WHERE id = ?1 AND store_id = ?2",
+            "UPDATE products SET is_special = 0, special_pula = NULL, was_price_pula = NULL
+             WHERE id = ?1 AND store_id = ?2",
             args(&[&pid as &dyn ToSql, &id as &dyn ToSql]),
         );
     } else {
         let special = num_field(&body, "specialPula", "special_pula").unwrap_or(0.0);
+        // Keep the price it was reduced from, so the shopper can see what
+        // the special saved them rather than just a lower number.
         exec(
             &conn,
-            "UPDATE products SET is_special = 1, special_pula = ?1 WHERE id = ?2 AND store_id = ?3",
+            "UPDATE products SET is_special = 1, special_pula = ?1, was_price_pula = price_pula
+             WHERE id = ?2 AND store_id = ?3",
             args(&[&special as &dyn ToSql, &pid, &id]),
         );
     }

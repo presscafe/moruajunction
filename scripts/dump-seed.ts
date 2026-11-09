@@ -2,7 +2,8 @@
  * Dumps the seeded database into a portable JSON dataset that the Rust
  * service embeds and loads on first run. Run: npx tsx scripts/dump-seed.ts
  */
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 
 /**
  * The toolkit stores the catalogue in SQLite through `node:sqlite`, which
@@ -17,6 +18,18 @@ if (major < 22 || (major === 22 && minor < 13)) {
   )
   process.exit(1)
 }
+
+/**
+ * The dataset is built in a scratch database that is thrown away
+ * afterwards. Reusing the working database would mean the dump quietly
+ * exported whatever happened to be in it — so a change to the toolkit
+ * could ship an old catalogue without anything complaining.
+ */
+const SCRATCH = join(process.cwd(), 'data', '.dataset-build.db')
+rmSync(SCRATCH, { force: true })
+rmSync(`${SCRATCH}-wal`, { force: true })
+rmSync(`${SCRATCH}-shm`, { force: true })
+process.env.MORUA_DB = SCRATCH
 
 const { db, migrate } = await import('../server/db.ts')
 const { seed } = await import('../server/seed.ts')
@@ -38,6 +51,9 @@ const data = {
 
 mkdirSync('rust/seed', { recursive: true })
 writeFileSync('rust/seed/morua.json', JSON.stringify(data, null, 1))
+rmSync(SCRATCH, { force: true })
+rmSync(`${SCRATCH}-wal`, { force: true })
+rmSync(`${SCRATCH}-shm`, { force: true })
 console.log(
   `Wrote rust/seed/morua.json — ${data.stores.length} stores, ${data.products.length} products, ${data.reviews.length} reviews.`,
 )

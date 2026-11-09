@@ -26,6 +26,12 @@ export default function ProductPage() {
 
   const p = data.product
   const s = p.store
+  // What the shopper pays: the shop's promotional price if it is on special,
+  // plus the mall's declared levy. The price on this page is the price the
+  // basket will charge.
+  const shelfPrice = p.is_special && p.special_pula ? p.special_pula : p.price_pula
+  const price = p.payable_pula ?? shelfPrice
+  const was = p.was_price_pula && p.was_price_pula > price ? p.was_price_pula : null
 
   function addToBasket() {
     add(p.id, qty)
@@ -57,6 +63,9 @@ export default function ProductPage() {
           </div>
           <div className="row gap-s wrapflex" style={{ marginTop: '0.9rem' }}>
             {p.is_special && <Badge tone="gold">Special price</Badge>}
+            {p.is_special && was && (
+              <Badge tone="gold">save {pula(was - price)}</Badge>
+            )}
             {p.landed?.localWins && <Badge tone="green">🏠 Cheaper than importing</Badge>}
             {p.shelf?.live && <Badge tone="blue">Live Shelf · {p.shelf.minutes} min</Badge>}
             {p.stock > 0 ? (
@@ -74,18 +83,22 @@ export default function ProductPage() {
 
           <div className="row gap wrapflex" style={{ marginTop: '1rem', alignItems: 'baseline' }}>
             <span style={{ fontFamily: 'var(--serif)', fontSize: '2rem', fontWeight: 700 }}>
-              {pula(p.price_pula)}
+              {pula(price)}
             </span>
-            {p.was_price_pula && p.was_price_pula > p.price_pula && (
+            {was && (
               <>
-                <span className="price-was">{pula(p.was_price_pula)}</span>
-                <span className="price-save">
-                  save {pula(p.was_price_pula - p.price_pula)}
-                </span>
+                <span className="price-was">{pula(was)}</span>
+                <span className="price-save">save {pula(was - price)}</span>
               </>
             )}
             <span className="muted small">per {p.unit}</span>
           </div>
+
+          {p.markup_pct > 0 && (
+            <p className="tiny muted" style={{ marginTop: '0.4rem' }}>
+              Shop price {pula(shelfPrice)} · Junction levy {p.markup_pct}% · you pay {pula(price)}
+            </p>
+          )}
 
           <div className="row gap-s wrapflex" style={{ marginTop: '0.8rem' }}>
             <Badge tone="gold">★ {p.rating?.toFixed(1)} ({p.review_count})</Badge>
@@ -123,7 +136,7 @@ export default function ProductPage() {
                   </button>
                 </div>
                 <button className="btn btn-primary grow" onClick={addToBasket}>
-                  {added ? '✓ Added to the basket' : `Add to basket · ${pula(p.price_pula * qty)}`}
+                  {added ? '✓ Added to the basket' : `Add to basket · ${pula(price * qty)}`}
                 </button>
               </div>
             )}

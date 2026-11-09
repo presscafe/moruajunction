@@ -38,8 +38,16 @@ pub fn landed_quote(local_pula: f64, sa_price_zar: f64, weight_kg: f64, duty_rat
     let duty = round2(customs_value * duty_rate);
     let vat = round2((customs_value + duty) * IMPORT_VAT_RATE);
     let landed = round2(customs_value + duty + vat + CLEARING_FEE_PULA);
-    let saving = round2(landed - local_pula);
-    let saving_pct = if landed > 0.0 { (saving / landed * 100.0).round() as i64 } else { 0 };
+    // A service the shop provides itself — a free counter-side mobile
+    // banking setup, say — has no South African price to compare against.
+    // There is nothing to import, so the mall says nothing about importing.
+    let comparable = sa_price_zar > 0.0;
+    let saving = if comparable { round2(landed - local_pula) } else { 0.0 };
+    let saving_pct = if comparable && landed > 0.0 {
+        (saving / landed * 100.0).round() as i64
+    } else {
+        0
+    };
     let multiple = if sa_pula > 0.0 { round2(landed / sa_pula) } else { 0.0 };
 
     json!({
@@ -54,9 +62,11 @@ pub fn landed_quote(local_pula: f64, sa_price_zar: f64, weight_kg: f64, duty_rat
         "savingPct": saving_pct,
         "leadDaysMin": CROSS_BORDER_LEAD_DAYS_MIN,
         "leadDaysMax": CROSS_BORDER_LEAD_DAYS_MAX,
-        "localWins": saving > 0.0,
+        "localWins": comparable && saving > 0.0,
         "landedMultiple": multiple,
-        "crossBorderViable": multiple > 0.0 && multiple <= CROSS_BORDER_VIABLE_MAX_MULTIPLE,
+        "crossBorderViable": comparable
+            && multiple > 0.0
+            && multiple <= CROSS_BORDER_VIABLE_MAX_MULTIPLE,
     })
 }
 

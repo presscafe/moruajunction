@@ -2,7 +2,12 @@ import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
-const DB_PATH = resolve(process.cwd(), 'data', 'morua.db')
+// The toolkit works on its own database file, which can be pointed
+// somewhere else with MORUA_DB — the dataset dump uses a scratch file so
+// it never depends on, or disturbs, the database you work in.
+const DB_PATH = process.env.MORUA_DB
+  ? resolve(process.env.MORUA_DB)
+  : resolve(process.cwd(), 'data', 'morua.db')
 mkdirSync(dirname(DB_PATH), { recursive: true })
 
 export const db = new DatabaseSync(DB_PATH)
