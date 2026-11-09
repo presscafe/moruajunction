@@ -654,6 +654,35 @@ async function main() {
     ledgerAfter.entries.some((e) => e.kind === 'refund'),
   )
 
+  /* ---- raising a problem ---- */
+  const problem = await post('/api/disputes', {
+    orderCode: placed.data.code,
+    subject: 'The delivery took two days',
+    detail: 'It was promised for today.',
+    customerName: 'Contract Check',
+  })
+  record('a shopper can raise a problem with an order', problem.data.ok === true, problem.data.id)
+  const orderProblems = await get(`/api/orders/${placed.data.code}/disputes`)
+  checkShape('GET /api/orders/:code/disputes', orderProblems, { disputes: 'array' })
+  record(
+    'the shopper can see the problem they raised',
+    orderProblems.disputes.some((d) => d.id === problem.data.id),
+  )
+  const adminView = await get('/api/admin')
+  record(
+    'the mall admin sees the problem',
+    (adminView.disputes ?? []).some((d) => d.id === problem.data.id),
+  )
+  const answered = await post(`/api/admin/disputes/${problem.data.id}/resolve`, {
+    resolution: 'Answered by the mall admin',
+  })
+  record('the mall admin answers it', answered.data.ok === true)
+  const afterAnswer = await get(`/api/orders/${placed.data.code}/disputes`)
+  record(
+    'the shopper sees the answer',
+    afterAnswer.disputes.find((d) => d.id === problem.data.id)?.state === 'resolved',
+  )
+
   /* ---- the store card ---- */
   const cardPhone = '+267 71 000 000'
   const cardUrl = `/api/card?phone=${encodeURIComponent(cardPhone)}`

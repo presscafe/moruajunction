@@ -54,6 +54,7 @@ export default function Admin() {
   const [data, setData] = useState<AdminData | null>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [returns, setReturns] = useState<any[]>([])
+  const [problems, setProblems] = useState<any[]>([])
   const [tab, setTab] = useState<Tab>('queue')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -72,6 +73,12 @@ export default function Admin() {
       .then((r: any) => setReturns(r.returns ?? []))
       .catch(() => {
         /* the console still works without the returns queue */
+      })
+    api
+      .get<AdminData>('/admin')
+      .then((d) => setProblems((d as any).disputes ?? []))
+      .catch(() => {
+        /* the console still works without the problems list */
       })
   }, [])
 
@@ -364,6 +371,70 @@ export default function Admin() {
             title="The money goes back"
             lede="A shopper sends an item back to the shop that sold it. The shop accepts it, and the mall settles the refund: the shopper gets their money, the shop's share goes back with the item, and the junction's levy is returned. The delivery is not — the rider already came."
           />
+          <div className="panel">
+            <div className="panel-head">
+              <span className="strong">Problems raised by shoppers</span>
+              <Badge tone={problems.filter((p) => p.state === 'open').length ? 'red' : 'green'}>
+                {problems.filter((p) => p.state === 'open').length} open
+              </Badge>
+            </div>
+            <div className="panel-body" style={{ overflowX: 'auto' }}>
+              {problems.length === 0 ? (
+                <p className="muted small">Nothing has been raised.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Problem</th>
+                      <th>Order</th>
+                      <th>Shop</th>
+                      <th>State</th>
+                      <th>Answer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {problems.map((p: any) => (
+                      <tr key={p.id}>
+                        <td className="small">
+                          <span className="strong">{p.subject}</span>
+                          <br />
+                          <span className="tiny muted">{p.detail}</span>
+                        </td>
+                        <td className="mono small">{p.order_code ?? '—'}</td>
+                        <td className="small">{p.store_name ?? '—'}</td>
+                        <td>
+                          <Badge tone={p.state === 'resolved' ? 'green' : 'red'}>{p.state}</Badge>
+                        </td>
+                        <td>
+                          {p.state === 'open' ? (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={busy === `resolve-${p.id}`}
+                              onClick={() =>
+                                act(
+                                  `resolve-${p.id}`,
+                                  () =>
+                                    api.post(`/admin/disputes/${p.id}/resolve`, {
+                                      resolution: 'Answered by the mall admin',
+                                    }),
+                                  'The shopper has an answer',
+                                )
+                              }
+                            >
+                              Answer
+                            </button>
+                          ) : (
+                            <span className="tiny muted">{p.resolution}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
           {returns.length === 0 ? (
             <Empty glyph="📦" title="Nothing to settle" body="No shopper has asked to send anything back." />
           ) : (
