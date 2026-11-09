@@ -44,6 +44,8 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/orders/:code", get(order_detail))
         .route("/orders/:code/advance", post(advance_order))
         .route("/orders/:code/confirm", post(confirm_order))
+        .route("/orders/:code/disputes", get(order_disputes))
+        .route("/disputes", post(create_dispute))
         .route("/orders/:code/returns", get(order_returns).post(create_return))
         .route("/seller/:slug", get(seller_console))
         .route("/seller/:slug/products", post(seller_save_product))
@@ -2658,6 +2660,75 @@ async fn admin_dispatch(
         &note,
     );
     Json(json!({"ok": true, "provider": provider_name, "rider": rider}))
+}
+
+/// The shopper raises a problem with an order. Not a return — a return is
+/// about an item going back. This is about anything else: a shop that
+/// never answered, a delivery that went wrong, a bill that looks wrong.
+async fn create_dispute(State(state): S, Json(body): Json<Value>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order_code = body
+        .get("orderCode")
+        .or_else(|| body.get("order_code"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let order = row(
+        &conn,
+        "SELECT id FROM orders WHERE code = ?1",
+        args(&[&order_code as &dyn ToSql]),
+    );
+    let order_id = order.as_ref().and_then(|o| o.get("id")).and_then(|v| v.as_i64());
+    let subject = body
+        .get("subject")
+        .and_then(|v| v.as_str())
+        .unwrap_or("A problem with this order")
+        .to_string();
+    let detail = body
+        .get("detail")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let raised_by = body
+        .get("customerName")
+        .or_else(|| body.get("customer_name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("A shopper")
+        .to_string();
+    exec(
+        &conn,
+        "INSERT INTO disputes (order_id, store_id, subject, detail, state, raised_by, resolution, created_at)
+         VALUES (?1,NULL,?2,?3,'open',?4,NULL,?5)",
+        args(&[
+            &order_id as &dyn ToSql,
+            &subject,
+            &detail,
+            &raised_by,
+            &now_iso() as &dyn ToSql,
+        ]),
+    );
+    let id = last_id(&conn);
+    Json(json!({"ok": true, "id": id}))
+}
+
+/// The problems raised on one order.
+async fn order_disputes(State(state): S, Path(code): Path<String>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order = match row(
+        &conn,
+        "SELECT id FROM orders WHERE code = ?1",
+        args(&[&code as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let order_id = order.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let list = rows(
+        &conn,
+        "SELECT * FROM disputes WHERE order_id = ?1 ORDER BY id DESC",
+        args(&[&order_id as &dyn ToSql]),
+    );
+    Json(json!({"disputes": list}))
 }
 
 async fn admin_create_dispute(State(state): S, Json(body): Json<Value>) -> Json<Value> {

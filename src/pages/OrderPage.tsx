@@ -32,6 +32,10 @@ export default function OrderPage() {
   const [reason, setReason] = useState('')
   const [qty, setQty] = useState(1)
   const [note, setNote] = useState<string | null>(null)
+  const [disputes, setDisputes] = useState<any[]>([])
+  const [raising, setRaising] = useState(false)
+  const [subject, setSubject] = useState('Something is wrong with this order')
+  const [detail, setDetail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -53,7 +57,35 @@ export default function OrderPage() {
       .catch(() => {
         /* the order page still works without the return list */
       })
+    api
+      .get(`/orders/${code}/disputes`)
+      .then((r: any) => setDisputes(r.disputes ?? []))
+      .catch(() => {
+        /* the order page still works without the problem list */
+      })
   }, [code])
+
+  async function raiseProblem() {
+    setBusy(true)
+    setNote(null)
+    try {
+      await api.post('/disputes', {
+        orderCode: code,
+        subject,
+        detail,
+        customerName: order?.customer_name,
+      })
+      const r: any = await api.get(`/orders/${code}/disputes`)
+      setDisputes(r.disputes ?? [])
+      setRaising(false)
+      setDetail('')
+      setNote('The mall admin has it. You will see what they decide here.')
+    } catch (e: any) {
+      setNote(e.message ?? 'That could not be raised')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function confirmDelivery() {
     setBusy(true)
@@ -301,6 +333,69 @@ export default function OrderPage() {
                 You can send an item back once it is on its way to you or has arrived.
               </p>
             )}
+          </div>
+
+          <div className="card">
+            <h3 style={{ marginBottom: '0.7rem' }}>Raise a problem</h3>
+            <p className="tiny muted" style={{ marginBottom: '0.7rem' }}>
+              Not about an item? A shop that never answered, a delivery that went wrong, a bill
+              that looks wrong — the mall admin takes it from here.
+            </p>
+            {disputes.map((d: any) => (
+              <div key={d.id} className="kv">
+                <span className="muted small">
+                  {d.subject}
+                  <span className="tiny muted"> · {d.detail}</span>
+                </span>
+                <span className="tiny strong">{d.state === 'resolved' ? 'resolved' : 'open'}</span>
+              </div>
+            ))}
+            {raising ? (
+              <div className="panel" style={{ margin: 0 }}>
+                <div className="panel-body">
+                  <label className="tiny muted" htmlFor="subject">
+                    What is the problem?
+                  </label>
+                  <input
+                    id="subject"
+                    className="input"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                  <label className="tiny muted" htmlFor="detail">
+                    Tell the admin what happened
+                  </label>
+                  <textarea
+                    id="detail"
+                    className="input"
+                    rows={3}
+                    value={detail}
+                    onChange={(e) => setDetail(e.target.value)}
+                  />
+                  <div className="row gap" style={{ marginTop: '0.6rem' }}>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={raiseProblem}
+                      disabled={busy || detail.trim().length < 3}
+                    >
+                      {busy ? 'Raising…' : 'Raise it'}
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setRaising(false)}
+                      disabled={busy}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button className="btn btn-ghost btn-sm" onClick={() => setRaising(true)}>
+                Something else is wrong
+              </button>
+            )}
+            {note && <p className="tiny green" style={{ marginTop: '0.5rem' }}>{note}</p>}
           </div>
 
           <div className="card">
