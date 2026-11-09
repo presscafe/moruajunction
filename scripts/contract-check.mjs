@@ -562,8 +562,8 @@ async function main() {
   record('POST /api/orders/:code/advance: the order reaches delivered', reached === 'delivered')
   const delivered = await get(`/api/orders/${placed.data.code}`)
   record(
-    'order: the escrow is released on delivery',
-    delivered.order.escrow_state === 'released',
+    'order: the money stays in escrow until the shopper confirms',
+    delivered.order.escrow_state === 'awaiting',
     delivered.order.escrow_state,
   )
 
@@ -633,6 +633,13 @@ async function main() {
     'the mall refunds the shopper',
     refunded.data.ok === true && refunded.data.amount_pula > 0,
     `P${refunded.data.amount_pula}`,
+  )
+
+  const confirmed = await post(`/api/orders/${placed.data.code}/confirm`, {})
+  record(
+    'the shopper confirms and the money is released',
+    confirmed.data.ok === true && confirmed.data.order?.escrow_state === 'released',
+    confirmed.data.order?.escrow_state,
   )
 
   const ledgerAfter = await get('/api/ledger')

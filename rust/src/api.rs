@@ -43,6 +43,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/orders", post(create_order))
         .route("/orders/:code", get(order_detail))
         .route("/orders/:code/advance", post(advance_order))
+        .route("/orders/:code/confirm", post(confirm_order))
         .route("/orders/:code/returns", get(order_returns).post(create_return))
         .route("/seller/:slug", get(seller_console))
         .route("/seller/:slug/products", post(seller_save_product))
@@ -57,6 +58,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/admin/stores/:id/approval", post(admin_approval))
         .route("/admin/stores/:id/markup", post(admin_markup))
         .route("/admin/orders/:code/dispatch", post(admin_dispatch))
+        .route("/admin/orders/:code/release", post(admin_release_order))
         .route("/admin/disputes", post(admin_create_dispute))
         .route("/admin/disputes/:id/resolve", post(admin_resolve_dispute))
         .route("/admin/promotions", post(admin_create_promotion))
@@ -1368,111 +1370,42 @@ async fn advance_order(
     );
 
     if to == "delivered" {
-        let escrow = order.get("escrow_state").and_then(|v| v.as_str()).unwrap_or("held");
-        if escrow == "held" {
-            let items = rows(
+        // The goods are with the rider, on their way. The money stays in
+        // escrow until the shopper says they have arrived.
+        exec(
+            &conn,
+            "UPDATE orders SET escrow_state = 'awaiting' WHERE id = ?1",
+            args(&[&id as &dyn ToSql]),
+        );
+        // The shopper's Store Card earns a stamp at every shop that
+        // served them, and the shop's own card counts the stamps it
+        // has handed out.
+        let phone = normalise_phone(
+            order
+                .get("customer_phone")
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+        );
+        if !phone.is_empty() {
+            let shops = rows(
                 &conn,
-                "SELECT commission_pula, seller_net_pula, markup_pula FROM order_items WHERE order_id = ?1",
+                "SELECT DISTINCT store_id FROM order_items WHERE order_id = ?1",
                 args(&[&id as &dyn ToSql]),
             );
-            let sum = |key: &str| -> f64 {
-                items
-                    .iter()
-                    .map(|i| i.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0))
-                    .sum()
-            };
-            let commission = round2(sum("commission_pula"));
-            let markup = round2(sum("markup_pula"));
-            let seller_net = round2(sum("seller_net_pula"));
-            let delivery = order
-                .get("delivery_pula")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
-            let service = order
-                .get("service_pula")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
-            let total = order
-                .get("total_pula")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
-
-            exec(
-                &conn,
-                "UPDATE orders SET escrow_state = 'released' WHERE id = ?1",
-                args(&[&id as &dyn ToSql]),
-            );
-            // The shopper's Store Card earns a stamp at every shop that
-            // served them, and the shop's own card counts the stamps it
-            // has handed out.
-            let phone = normalise_phone(
-                order
-                    .get("customer_phone")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(""),
-            );
-            if !phone.is_empty() {
-                let shops = rows(
+            for shop in &shops {
+                let sid = shop.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
+                exec(
                     &conn,
-                    "SELECT DISTINCT store_id FROM order_items WHERE order_id = ?1",
-                    args(&[&id as &dyn ToSql]),
+                    "INSERT INTO card_stamps (phone, store_id, stamps, updated_at) VALUES (?1,?2,1,?3)
+                     ON CONFLICT(phone, store_id) DO UPDATE SET stamps = stamps + 1, updated_at = ?3",
+                    args(&[&phone as &dyn ToSql, &sid, &ts as &dyn ToSql]),
                 );
-                for shop in &shops {
-                    let sid = shop.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
-                    exec(
-                        &conn,
-                        "INSERT INTO card_stamps (phone, store_id, stamps, updated_at) VALUES (?1,?2,1,?3)
-                         ON CONFLICT(phone, store_id) DO UPDATE SET stamps = stamps + 1, updated_at = ?3",
-                        args(&[&phone as &dyn ToSql, &sid, &ts as &dyn ToSql]),
-                    );
-                    exec(
-                        &conn,
-                        "UPDATE stores SET card_stamps = card_stamps + 1 WHERE id = ?1",
-                        args(&[&sid]),
-                    );
-                }
+                exec(
+                    &conn,
+                    "UPDATE stores SET card_stamps = card_stamps + 1 WHERE id = ?1",
+                    args(&[&sid]),
+                );
             }
-            ledger::post(
-                &conn,
-                &[
-                    Entry {
-                        ts: ts.clone(),
-                        order_id: Some(id),
-                        account: "escrow_held".into(),
-                        direction: "debit".into(),
-                        amount_pula: total,
-                        kind: "release".into(),
-                        memo: format!("Escrow released for {code}"),
-                    },
-                    Entry {
-                        ts: ts.clone(),
-                        order_id: Some(id),
-                        account: "revenue".into(),
-                        direction: "credit".into(),
-                        amount_pula: round2(commission + markup + service),
-                        kind: "release".into(),
-                        memo: format!("Commission, markup and service fee on {code}"),
-                    },
-                    Entry {
-                        ts: ts.clone(),
-                        order_id: Some(id),
-                        account: "seller_payable".into(),
-                        direction: "credit".into(),
-                        amount_pula: seller_net,
-                        kind: "release".into(),
-                        memo: format!("Seller proceeds for {code}"),
-                    },
-                    Entry {
-                        ts: ts.clone(),
-                        order_id: Some(id),
-                        account: "delivery_costs".into(),
-                        direction: "credit".into(),
-                        amount_pula: delivery,
-                        kind: "release".into(),
-                        memo: format!("Delivery settlement for {code}"),
-                    },
-                ],
-            );
         }
     }
     let updated = row(
@@ -1481,6 +1414,195 @@ async fn advance_order(
         args(&[&id as &dyn ToSql]),
     );
     Json(json!({"ok": true, "status": to, "order": updated}))
+}
+
+/* ------------------------------------------------------------------ *
+ * The escrow
+ *
+ * The money the shopper paid is held until the shopper says the goods
+ * arrived. Nothing else releases it — not the rider, not the shop. The
+ * mall admin can release it if a shopper never answers, but the shopper
+ * holds the pen.
+ * ------------------------------------------------------------------ */
+
+/// Release the escrow for an order: the shop gets its share, the mall
+/// keeps its levy and its fee, the rider is paid, and anything the
+/// shopper sent back has already gone back to them.
+fn release_escrow(conn: &Db, order: &Value) -> bool {
+    let id = order.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let escrow = order
+        .get("escrow_state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("held")
+        .to_string();
+    if escrow == "released" {
+        return true;
+    }
+    let code = order
+        .get("code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let items = rows(
+        conn,
+        "SELECT commission_pula, seller_net_pula, markup_pula FROM order_items WHERE order_id = ?1",
+        args(&[&id as &dyn ToSql]),
+    );
+    let sum = |key: &str| -> f64 {
+        items
+            .iter()
+            .map(|i| i.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0))
+            .sum()
+    };
+    let commission = round2(sum("commission_pula"));
+    let markup = round2(sum("markup_pula"));
+    let seller_net = round2(sum("seller_net_pula"));
+    let delivery = order
+        .get("delivery_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let service = order
+        .get("service_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let total = order
+        .get("total_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    // Anything the shopper sent back has already gone back to them, so
+    // it is not paid out again here.
+    let refunded = row(
+        conn,
+        "SELECT COALESCE(SUM(amount_pula),0) AS amount, COALESCE(SUM(revenue_pula),0) AS revenue,
+                COALESCE(SUM(seller_pula),0) AS seller
+         FROM returns WHERE order_id = ?1 AND status = 'refunded'",
+        args(&[&id as &dyn ToSql]),
+    );
+    let back_total = refunded
+        .as_ref()
+        .and_then(|r| r.get("amount"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let back_revenue = refunded
+        .as_ref()
+        .and_then(|r| r.get("revenue"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let back_seller = refunded
+        .as_ref()
+        .and_then(|r| r.get("seller"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let ts = now_iso();
+    let posted = ledger::post(
+        conn,
+        &[
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(id),
+                account: "escrow_held".into(),
+                direction: "debit".into(),
+                amount_pula: round2(total - back_total),
+                kind: "release".into(),
+                memo: format!("Escrow released for {code}"),
+            },
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(id),
+                account: "revenue".into(),
+                direction: "credit".into(),
+                amount_pula: round2(commission + markup + service - back_revenue),
+                kind: "release".into(),
+                memo: format!("Commission, markup and service fee on {code}"),
+            },
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(id),
+                account: "seller_payable".into(),
+                direction: "credit".into(),
+                amount_pula: round2(seller_net - back_seller),
+                kind: "release".into(),
+                memo: format!("Seller proceeds for {code}"),
+            },
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(id),
+                account: "delivery_costs".into(),
+                direction: "credit".into(),
+                amount_pula: delivery,
+                kind: "release".into(),
+                memo: format!("Delivery settlement for {code}"),
+            },
+        ],
+    );
+    if !posted {
+        return false;
+    }
+    exec(
+        conn,
+        "UPDATE orders SET escrow_state = 'released' WHERE id = ?1",
+        args(&[&id as &dyn ToSql]),
+    );
+    true
+}
+
+/// The shopper says the goods arrived, and the money is released.
+async fn confirm_order(State(state): S, Path(code): Path<String>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order = match row(
+        &conn,
+        "SELECT * FROM orders WHERE code = ?1",
+        args(&[&code as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let status = order
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if status != "delivered" {
+        return Json(json!({"error": "This order has not been delivered yet"}));
+    }
+    if !release_escrow(&conn, &order) {
+        return Json(json!({"error": "The books would not balance"}));
+    }
+    let updated = row(
+        &conn,
+        "SELECT * FROM orders WHERE id = ?1",
+        args(&[&order.get("id").and_then(|v| v.as_i64()).unwrap_or(0) as &dyn ToSql]),
+    );
+    Json(json!({"ok": true, "order": updated}))
+}
+
+/// The mall admin releases the escrow of an order the shopper has not
+/// answered — the escape hatch so a shop is never left unpaid.
+async fn admin_release_order(State(state): S, Path(code): Path<String>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order = match row(
+        &conn,
+        "SELECT * FROM orders WHERE code = ?1",
+        args(&[&code as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let id = order.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    if !release_escrow(&conn, &order) {
+        return Json(json!({"error": "The books would not balance"}));
+    }
+    record_admin_action(
+        &conn,
+        "Mall Admin",
+        "release_escrow",
+        "order",
+        &code,
+        "Released the escrow of an order the shopper had not confirmed",
+        "",
+    );
+    let updated = row(&conn, "SELECT * FROM orders WHERE id = ?1", args(&[&id as &dyn ToSql]));
+    Json(json!({"ok": true, "order": updated}))
 }
 
 /* ------------------------------------------------------------------ *
@@ -1873,45 +1995,87 @@ async fn admin_refund_return(
         .and_then(|v| v.as_str())
         .unwrap_or("the item")
         .to_string();
-    let posted = ledger::post(
-        &conn,
-        &[
-            Entry {
-                ts: ts.clone(),
-                order_id: Some(order_id),
-                account: "platform_cash".into(),
-                direction: "credit".into(),
-                amount_pula: amount,
-                kind: "refund".into(),
-                memo: format!("Refund for {product} on order {code}"),
-            },
-            Entry {
-                ts: ts.clone(),
-                order_id: Some(order_id),
-                account: "revenue".into(),
-                direction: "debit".into(),
-                amount_pula: revenue_share,
-                kind: "refund".into(),
-                memo: "Junction levy returned with the item".into(),
-            },
-            Entry {
-                ts: ts.clone(),
-                order_id: Some(order_id),
-                account: "seller_payable".into(),
-                direction: "debit".into(),
-                amount_pula: seller_share,
-                kind: "refund".into(),
-                memo: "The shop's share returned with the item".into(),
-            },
-        ],
-    );
+    // The shares that go back with the item, so the release does not pay
+    // them out a second time.
+    let escrow_state = order
+        .get("escrow_state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("held")
+        .to_string();
+    let posted = if escrow_state == "released" {
+        // The money has left the escrow already: it comes out of the
+        // mall's own hands, and the shares come back off the sale.
+        ledger::post(
+            &conn,
+            &[
+                Entry {
+                    ts: ts.clone(),
+                    order_id: Some(order_id),
+                    account: "platform_cash".into(),
+                    direction: "credit".into(),
+                    amount_pula: amount,
+                    kind: "refund".into(),
+                    memo: format!("Refund for {product} on order {code}"),
+                },
+                Entry {
+                    ts: ts.clone(),
+                    order_id: Some(order_id),
+                    account: "revenue".into(),
+                    direction: "debit".into(),
+                    amount_pula: revenue_share,
+                    kind: "refund".into(),
+                    memo: "Junction levy returned with the item".into(),
+                },
+                Entry {
+                    ts: ts.clone(),
+                    order_id: Some(order_id),
+                    account: "seller_payable".into(),
+                    direction: "debit".into(),
+                    amount_pula: seller_share,
+                    kind: "refund".into(),
+                    memo: "The shop's share returned with the item".into(),
+                },
+            ],
+        )
+    } else {
+        // The money is still in escrow: it comes out of there, and the
+        // release will not pay the returned shares out again.
+        ledger::post(
+            &conn,
+            &[
+                Entry {
+                    ts: ts.clone(),
+                    order_id: Some(order_id),
+                    account: "escrow_held".into(),
+                    direction: "debit".into(),
+                    amount_pula: amount,
+                    kind: "refund".into(),
+                    memo: format!("Refund for {product} on order {code}"),
+                },
+                Entry {
+                    ts: ts.clone(),
+                    order_id: Some(order_id),
+                    account: "platform_cash".into(),
+                    direction: "credit".into(),
+                    amount_pula: amount,
+                    kind: "refund".into(),
+                    memo: format!("Refund for {product} on order {code}"),
+                },
+            ],
+        )
+    };
     if !posted {
         return Json(json!({"error": "The refund would not balance the books"}));
     }
     exec(
         &conn,
-        "UPDATE returns SET status = 'refunded', updated_at = ?1 WHERE id = ?2",
-        args(&[&ts as &dyn ToSql, &id]),
+        "UPDATE returns SET status = 'refunded', revenue_pula = ?1, seller_pula = ?2, updated_at = ?3 WHERE id = ?4",
+        args(&[
+            &revenue_share as &dyn ToSql,
+            &seller_share as &dyn ToSql,
+            &ts as &dyn ToSql,
+            &id,
+        ]),
     );
     let store_id = ret.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
     notify(
@@ -2257,7 +2421,7 @@ async fn admin_console(State(state): S) -> Json<Value> {
     let orders = rows(
         &conn,
         "SELECT id, code, customer_name, customer_phone, customer_area, fulfilment, status, payment_method,
-                total_pula, placed_at, delivery_provider_id, delivery_provider_name, rider_name
+                total_pula, placed_at, delivery_provider_id, delivery_provider_name, rider_name, escrow_state
          FROM orders ORDER BY id DESC LIMIT 40",
         &[],
     );

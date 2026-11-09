@@ -305,6 +305,23 @@ export default function Admin() {
                       </td>
                       <td className="small">{o.delivery_provider_name ?? '—'}</td>
                       <td>
+                        {o.escrow_state === 'awaiting' ? (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            disabled={busy === `release-${o.code}`}
+                            onClick={() =>
+                              act(
+                                `release-${o.code}`,
+                                () => api.post(`/admin/orders/${o.code}/release`, {}),
+                                `${o.code} released — the shopper had not confirmed`,
+                              )
+                            }
+                          >
+                            Release
+                          </button>
+                        ) : (
+                          <span className="tiny muted">{o.escrow_state}</span>
+                        )}
                         <DispatchForm
                           order={o}
                           providers={data.providers}

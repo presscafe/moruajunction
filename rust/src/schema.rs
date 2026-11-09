@@ -94,6 +94,8 @@ pub fn migrate(conn: &Connection) {
             store_id INTEGER NOT NULL REFERENCES stores(id),
             qty INTEGER NOT NULL DEFAULT 1,
             amount_pula REAL NOT NULL DEFAULT 0,
+            revenue_pula REAL NOT NULL DEFAULT 0,
+            seller_pula REAL NOT NULL DEFAULT 0,
             reason TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'requested',
             note TEXT NOT NULL DEFAULT '',
