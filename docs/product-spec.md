@@ -198,6 +198,24 @@ also written to IndexedDB so the app can answer without a network at all. The
 shopper is told which they are getting. Money is never cached — an order
 needs a connection, and the app says so.
 
+### 4.4 Three promises that had no engine behind them (2026-11)
+
+A pass over the app against its own copy found three places where the
+mall promised something it did not do. All three are now built, and each
+one has checks that fail if it stops working.
+
+| The promise | What it actually was | What it is now |
+|---|---|---|
+| *"Escrow & Return-to-Shop™: if the order is wrong, you can send it back to the shop that sold it."* | No table, no endpoint, no button. | The shopper sends an item back from the order page; the shop is notified and accepts or declines it; the mall settles the refund — the shopper's money back, the shop's share back with the item, the junction's levy returned. The delivery is not returned: the rider already came. |
+| *"The money stays in escrow until you confirm the goods arrived."* | The rider's status change released the escrow. The shopper held no pen. | Delivery moves the order to *awaiting*. Only the shopper's confirmation releases the money. The mall admin can release an order the shopper never answered — that release is written to the audit trail — so a shop is never left unpaid. |
+| *"Store Card™ — stamps for repeat buyers."* | A number in the seed that never moved. | The card is keyed to the shopper's phone number — the same number the rider calls, which is how money already moves in Botswana. A delivered order earns a stamp at each shop that served it; a full card is worth a P50 credit against the next basket at that shop, funded by that shop. |
+
+The pattern was the same in all three: the copy described the moat, and
+the code had the name of it. The competitive audit's own conclusion —
+*"own the transaction end to end: checkout, payment, receipt, delivery,
+POD, returns, refunds, so there is nothing to do offline"* — is only
+true once the shopper holds the pen on the escrow.
+
 ### 4.2 Open items that remain open
 
 D2 (agent vs principal, pending a written BURS position), D5 (the final fee
