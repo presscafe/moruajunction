@@ -7,6 +7,39 @@ import { dateTime, pula, pulaShort } from '../lib/format'
 
 type Tab = 'queue' | 'markup' | 'dispatch' | 'returns' | 'prices' | 'ledger' | 'audit'
 
+/**
+ * Keeper's Ledger, in plain words. The book is double-entry, so an
+ * account can sit on either side of it — but the mall admin should not
+ * have to know which side that is to read their own books.
+ */
+const LEDGER_ACCOUNTS: Record<string, { label: string; hint: string; asset: boolean }> = {
+  platform_cash: {
+    label: 'Cash in hand',
+    hint: 'Collected from shoppers and not paid out yet',
+    asset: true,
+  },
+  escrow_held: {
+    label: 'Held for shoppers',
+    hint: 'Paid out when an order is delivered',
+    asset: false,
+  },
+  revenue: {
+    label: 'Earned by the mall',
+    hint: 'Commission, the junction levy and service fees',
+    asset: false,
+  },
+  delivery_costs: {
+    label: 'Owed to the riders',
+    hint: 'What the delivery providers are paid',
+    asset: false,
+  },
+  seller_payable: {
+    label: 'Owed to the shops',
+    hint: 'What the shops have earned and not been paid',
+    asset: false,
+  },
+}
+
 const TABS: { key: Tab; label: string }[] = [
   { key: 'queue', label: 'Approval queue' },
   { key: 'markup', label: 'Price markup' },
@@ -452,18 +485,25 @@ export default function Admin() {
             lede="A double-entry ledger: every order posts a balanced set of lines, so the platform can always show what it holds, what it owes sellers and what it has earned."
           />
           <div className="grid grid-3">
-            {data.balances.map((b) => (
-              <div key={b.account} className="card">
-                <div className="tiny muted">{b.account.replace(/_/g, ' ')}</div>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>
-                  {pula(Math.abs(b.balance))}
+            {data.balances.map((b) => {
+              const account = LEDGER_ACCOUNTS[b.account] ?? {
+                label: b.account.replace(/_/g, ' '),
+                hint: 'Money on this account',
+                asset: false,
+              }
+              // An asset sits on the debit side, everything else on the
+              // credit side. The admin reads the number, not the side.
+              const amount = account.asset ? b.balance : -b.balance
+              return (
+                <div key={b.account} className="card">
+                  <div className="tiny muted">{account.label}</div>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>
+                    {pula(amount)}
+                  </div>
+                  <div className="tiny muted">{account.hint}</div>
                 </div>
-                <div className="tiny muted">
-                  {b.balance >= 0 ? 'Debit balance' : 'Credit balance'} · Dr {pulaShort(b.debit)} · Cr{' '}
-                  {pulaShort(b.credit)}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="panel">
             <div className="panel-head">
