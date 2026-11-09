@@ -39,7 +39,7 @@ the same ledger and the same promise.
 | **Aisles** | Groceries, Fresh Produce, Bakery, Hardware, Fashion, Mobile, Tourism, Mining, Farm — 100 aisles across 44 floors, in thirty trading categories. |
 | **Storefronts** | Every shop has its own storefront: a themed unit, the story of the business, the people who work there, hours, returns, delivery promise and its reviews. |
 | **One Basket, Many Shops™** | Buy from five shops, pay one delivery fee, receive one receipt. |
-| **Escrow & Return-to-Shop™** | The money is held until you confirm the goods arrived. If something is wrong you send it back to the shop that sold it — not to a courier depot — the shop takes it back, and the mall refunds you out of the money it collected. |
+| **Escrow & Return-to-Shop™** | The money is held until **you** confirm the goods arrived — not until the rider taps a button. If something is wrong you send it back to the shop that sold it — not to a courier depot — the shop takes it back, and the mall refunds you out of the money it collected. |
 
 ### The engines we own
 
@@ -179,7 +179,7 @@ in CI on every push.
 | Check | What it proves |
 |---|---|
 | `cargo test` | The pricing engines and the seeding hold — including that every product still lands in the shop that sells it. |
-| `npm run contract` | The storefront and the API still agree. It calls every endpoint the storefront calls, checks each field and its type, and runs an order from the basket to delivery, and drives the seller console. **125 checks.** |
+| `npm run contract` | The storefront and the API still agree. It calls every endpoint the storefront calls, checks each field and its type, and runs an order from the basket to delivery, and drives the seller console. **126 checks.** |
 | `npm run check:cache` | The two cache policies — the API client's and the service worker's — agree, and neither keeps the admin console, the seller console, orders or the ledger on the device. |
 | `npm run check:dataset` | The committed catalogue is what the TypeScript toolkit produces, so the binary and the toolkit cannot drift apart — and every special in it is genuinely cheaper than the price it was reduced from. |
 
