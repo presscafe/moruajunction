@@ -39,10 +39,14 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/orders", post(create_order))
         .route("/orders/:code", get(order_detail))
         .route("/orders/:code/advance", post(advance_order))
+        .route("/orders/:code/returns", get(order_returns).post(create_return))
         .route("/seller/:slug", get(seller_console))
         .route("/seller/:slug/products", post(seller_save_product))
         .route("/seller/:slug/shelf", post(seller_sync_shelf))
         .route("/seller/:slug/special", post(seller_set_special))
+        .route("/seller/:slug/returns", get(seller_returns))
+        .route("/seller/:slug/returns/:id/accept", post(seller_accept_return))
+        .route("/seller/:slug/returns/:id/decline", post(seller_decline_return))
         .route("/seller/:slug/notifications", get(seller_notifications))
         .route("/seller/:slug/notifications/read", post(seller_read_notifications))
         .route("/admin", get(admin_console))
@@ -52,6 +56,8 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/admin/disputes", post(admin_create_dispute))
         .route("/admin/disputes/:id/resolve", post(admin_resolve_dispute))
         .route("/admin/promotions", post(admin_create_promotion))
+        .route("/admin/returns", get(admin_returns))
+        .route("/admin/returns/:id/refund", post(admin_refund_return))
         .route("/admin/actions", get(admin_actions))
         .route("/ledger", get(ledger_view))
         .layer(axum::middleware::from_fn(cors))
@@ -1096,11 +1102,14 @@ async fn order_detail(State(state): S, Path(code): Path<String>) -> Json<Value> 
             )
         });
 
+    let returns = returns_list(&conn, "WHERE r.order_id = ?1", args(&[&id as &dyn ToSql]));
+
     Json(json!({
         "order": order,
         "items": items,
         "stores": stores,
         "provider": provider,
+        "returns": returns,
         "statusCopy": {
             "placed": "Order received by the mall",
             "confirmed": "Shops confirmed the items and reserved them on the shelf",
@@ -1252,6 +1261,461 @@ async fn advance_order(
 }
 
 /* ------------------------------------------------------------------ *
+ * Return to Shop
+ *
+ * The one thing a WhatsApp group and a cross-border forwarder cannot
+ * do: take the thing back. The shopper sends the item to the shop that
+ * sold it, the shop accepts it, and the mall settles the refund out of
+ * the money it collected. The delivery is not returned — the rider
+ * already came.
+ * ------------------------------------------------------------------ */
+
+/// The reasons a shopper can give for sending something back.
+pub const RETURN_REASONS: &[&str] = &[
+    "Not what I ordered",
+    "Arrived damaged",
+    "Wrong item",
+    "Missing from the box",
+    "No longer needed",
+    "Other",
+];
+
+/// A return joined with the product, the shop and the order it is on.
+fn return_joined(conn: &Db, id: i64) -> Option<Value> {
+    row(
+        conn,
+        "SELECT r.*, p.name AS product, p.icon, p.sku, o.code AS order_code,
+                o.status AS order_status, s.name AS shop, s.slug AS shop_slug
+         FROM returns r
+         JOIN products p ON p.id = r.product_id
+         JOIN orders o ON o.id = r.order_id
+         JOIN stores s ON s.id = r.store_id
+         WHERE r.id = ?1",
+        args(&[&id as &dyn ToSql]),
+    )
+}
+
+/// Every return, joined with the product, the shop and the order.
+fn returns_list(conn: &Db, where_clause: &str, params: &[&dyn ToSql]) -> Vec<Value> {
+    rows(
+        conn,
+        &format!(
+            "SELECT r.*, p.name AS product, p.icon, p.sku, o.code AS order_code,
+                    o.status AS order_status, s.name AS shop, s.slug AS shop_slug
+             FROM returns r
+             JOIN products p ON p.id = r.product_id
+             JOIN orders o ON o.id = r.order_id
+             JOIN stores s ON s.id = r.store_id
+             {where_clause}
+             ORDER BY r.id DESC"
+        ),
+        params,
+    )
+}
+
+/// How many returns are still waiting on somebody.
+fn returns_open(list: &[Value]) -> usize {
+    list.iter()
+        .filter(|r| {
+            matches!(
+                r.get("status").and_then(|v| v.as_str()),
+                Some("requested") | Some("accepted")
+            )
+        })
+        .count()
+}
+
+async fn order_returns(State(state): S, Path(code): Path<String>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order = match row(
+        &conn,
+        "SELECT id FROM orders WHERE code = ?1",
+        args(&[&code as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let order_id = order.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let list = returns_list(&conn, "WHERE r.order_id = ?1", args(&[&order_id as &dyn ToSql]));
+    Json(json!({"returns": list, "reasons": RETURN_REASONS}))
+}
+
+async fn create_return(
+    State(state): S,
+    Path(code): Path<String>,
+    Json(body): Json<Value>,
+) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let order = match row(
+        &conn,
+        "SELECT * FROM orders WHERE code = ?1",
+        args(&[&code as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let status = order
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    // The goods have to be with the shopper, or on their way, before
+    // there is anything to send back.
+    if status != "out_for_delivery" && status != "delivered" {
+        return Json(json!({
+            "error": "An item can only be sent back once it is on its way to you or has arrived"
+        }));
+    }
+    let order_id = order.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let item_id = body.get("itemId").and_then(|v| v.as_i64()).unwrap_or(0);
+    let item = match row(
+        &conn,
+        "SELECT * FROM order_items WHERE id = ?1 AND order_id = ?2",
+        args(&[&item_id as &dyn ToSql, &order_id]),
+    ) {
+        Some(i) => i,
+        None => return Json(json!({"error": "That item is not on this order"})),
+    };
+    let ordered = item.get("qty").and_then(|v| v.as_i64()).unwrap_or(0);
+    // What is already on its way back to the shop.
+    let already: i64 = rows(
+        &conn,
+        "SELECT COALESCE(SUM(qty),0) AS q FROM returns WHERE order_item_id = ?1 AND status != 'declined'",
+        args(&[&item_id as &dyn ToSql]),
+    )
+    .first()
+    .and_then(|r| r.get("q"))
+    .and_then(|v| v.as_i64())
+    .unwrap_or(0);
+    let qty = body.get("qty").and_then(|v| v.as_i64()).unwrap_or(1);
+    if qty < 1 {
+        return Json(json!({"error": "Say how many you are sending back"}));
+    }
+    let left = ordered - already;
+    if qty > left {
+        return Json(json!({
+            "error": format!("Only {left} of that item can still be sent back")
+        }));
+    }
+    let unit = item
+        .get("unit_price_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let amount = round2(unit * qty as f64);
+    let reason = body
+        .get("reason")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Not what I ordered")
+        .to_string();
+    let product_id = item.get("product_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let store_id = item.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let ts = now_iso();
+    exec(
+        &conn,
+        "INSERT INTO returns (order_id, order_item_id, product_id, store_id, qty, amount_pula,
+            reason, status, note, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,'requested','',?8,?8)",
+        args(&[
+            &order_id as &dyn ToSql,
+            &item_id,
+            &product_id,
+            &store_id,
+            &qty,
+            &amount,
+            &reason,
+            &ts as &dyn ToSql,
+        ]),
+    );
+    let id = last_id(&conn);
+    // The shop is told straight away: it has to take the item back.
+    let product_name = row(
+        &conn,
+        "SELECT name FROM products WHERE id = ?1",
+        args(&[&product_id as &dyn ToSql]),
+    )
+    .and_then(|p| p.get("name").and_then(|v| v.as_str()).map(String::from))
+    .unwrap_or_else(|| "An item".to_string());
+    notify(
+        &conn,
+        store_id,
+        "return",
+        "A shopper wants to send something back",
+        &format!(
+            "{product_name} on order {code} — {reason}. Take it back from the shopper, then the mall refunds them."
+        ),
+    );
+    Json(json!({"ok": true, "return": return_joined(&conn, id)}))
+}
+
+async fn seller_returns(State(state): S, Path(slug): Path<String>) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let store = match find_store(&conn, &slug) {
+        Some(s) => s,
+        None => return Json(json!({"error": "Store not found"})),
+    };
+    let id = store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let list = returns_list(&conn, "WHERE r.store_id = ?1", args(&[&id as &dyn ToSql]));
+    Json(json!({"returns": list, "open": returns_open(&list)}))
+}
+
+/// The shop accepts or turns down a return.
+fn return_decision(conn: &Db, slug: &str, id: i64, accept: bool, note: &str) -> Json<Value> {
+    let store = match find_store(conn, slug) {
+        Some(s) => s,
+        None => return Json(json!({"error": "Store not found"})),
+    };
+    let store_id = store.get("id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let ret = match return_joined(conn, id) {
+        Some(r) => r,
+        None => return Json(json!({"error": "Return not found"})),
+    };
+    if ret.get("store_id").and_then(|v| v.as_i64()) != Some(store_id) {
+        return Json(json!({"error": "That return belongs to another shop"}));
+    }
+    let status = ret
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if status != "requested" {
+        return Json(json!({"error": "That return has already been answered"}));
+    }
+    let product = ret
+        .get("product")
+        .and_then(|v| v.as_str())
+        .unwrap_or("The item")
+        .to_string();
+    let code = ret
+        .get("order_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let amount = ret
+        .get("amount_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let ts = now_iso();
+    let new_status = if accept { "accepted" } else { "declined" };
+    let note = if note.is_empty() {
+        if accept {
+            "The shop will take it back.".to_string()
+        } else {
+            "The shop cannot take this one back.".to_string()
+        }
+    } else {
+        note.to_string()
+    };
+    exec(
+        conn,
+        "UPDATE returns SET status = ?1, note = ?2, updated_at = ?3 WHERE id = ?4",
+        args(&[
+            &new_status as &dyn ToSql,
+            &note as &dyn ToSql,
+            &ts as &dyn ToSql,
+            &id,
+        ]),
+    );
+    if accept {
+        notify(
+            conn,
+            store_id,
+            "return",
+            "You accepted a return",
+            &format!("{product} on order {code}. Take it back, then the mall refunds the shopper."),
+        );
+    }
+    Json(json!({
+        "ok": true,
+        "status": new_status,
+        "amount_pula": amount,
+        "return": return_joined(conn, id)
+    }))
+}
+
+async fn seller_accept_return(
+    State(state): S,
+    Path((slug, id)): Path<(String, i64)>,
+    Json(body): Json<Value>,
+) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let note = body
+        .get("note")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    return_decision(&conn, &slug, id, true, &note)
+}
+
+async fn seller_decline_return(
+    State(state): S,
+    Path((slug, id)): Path<(String, i64)>,
+    Json(body): Json<Value>,
+) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let note = body
+        .get("note")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    return_decision(&conn, &slug, id, false, &note)
+}
+
+async fn admin_returns(State(state): S) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let list = returns_list(&conn, "", &[]);
+    Json(json!({"returns": list, "open": returns_open(&list)}))
+}
+
+/// The mall settles a return: the shopper gets the money back, the shop's
+/// share goes back to the mall with the item, and the junction's levy is
+/// returned too. The delivery is not — the rider already came.
+async fn admin_refund_return(
+    State(state): S,
+    Path(id): Path<i64>,
+    Json(_body): Json<Value>,
+) -> Json<Value> {
+    let conn = state.db.lock().unwrap();
+    let ret = match return_joined(&conn, id) {
+        Some(r) => r,
+        None => return Json(json!({"error": "Return not found"})),
+    };
+    let status = ret
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if status == "refunded" {
+        return Json(json!({"error": "That return has already been refunded"}));
+    }
+    if status != "accepted" {
+        return Json(json!({
+            "error": "The shop has to accept the return before it can be refunded"
+        }));
+    }
+    let order_id = ret.get("order_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let order = match row(
+        &conn,
+        "SELECT * FROM orders WHERE id = ?1",
+        args(&[&order_id as &dyn ToSql]),
+    ) {
+        Some(o) => o,
+        None => return Json(json!({"error": "Order not found"})),
+    };
+    let order_status = order
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if order_status != "delivered" {
+        return Json(json!({
+            "error": "The refund settles once the order has been delivered"
+        }));
+    }
+    let item_id = ret.get("order_item_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    let item = match row(
+        &conn,
+        "SELECT * FROM order_items WHERE id = ?1",
+        args(&[&item_id as &dyn ToSql]),
+    ) {
+        Some(i) => i,
+        None => return Json(json!({"error": "That item is not on the order any more"})),
+    };
+    let qty = ret.get("qty").and_then(|v| v.as_i64()).unwrap_or(1);
+    let line_qty = item
+        .get("qty")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(1)
+        .max(1);
+    let unit = item
+        .get("unit_price_pula")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let amount = round2(unit * qty as f64);
+    let seller_share = round2(
+        item.get("seller_net_pula")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0)
+            * qty as f64
+            / line_qty as f64,
+    );
+    let revenue_share = round2(amount - seller_share);
+    let ts = now_iso();
+    let code = ret
+        .get("order_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let product = ret
+        .get("product")
+        .and_then(|v| v.as_str())
+        .unwrap_or("the item")
+        .to_string();
+    let posted = ledger::post(
+        &conn,
+        &[
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(order_id),
+                account: "platform_cash".into(),
+                direction: "credit".into(),
+                amount_pula: amount,
+                kind: "refund".into(),
+                memo: format!("Refund for {product} on order {code}"),
+            },
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(order_id),
+                account: "revenue".into(),
+                direction: "debit".into(),
+                amount_pula: revenue_share,
+                kind: "refund".into(),
+                memo: "Junction levy returned with the item".into(),
+            },
+            Entry {
+                ts: ts.clone(),
+                order_id: Some(order_id),
+                account: "seller_payable".into(),
+                direction: "debit".into(),
+                amount_pula: seller_share,
+                kind: "refund".into(),
+                memo: "The shop's share returned with the item".into(),
+            },
+        ],
+    );
+    if !posted {
+        return Json(json!({"error": "The refund would not balance the books"}));
+    }
+    exec(
+        &conn,
+        "UPDATE returns SET status = 'refunded', updated_at = ?1 WHERE id = ?2",
+        args(&[&ts as &dyn ToSql, &id]),
+    );
+    let store_id = ret.get("store_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    notify(
+        &conn,
+        store_id,
+        "return",
+        "A return was refunded",
+        &format!("{product} was sent back and P{amount} went back to the shopper."),
+    );
+    record_admin_action(
+        &conn,
+        "Mall Admin",
+        "refund_return",
+        "return",
+        &id.to_string(),
+        &format!("P{amount} returned to the shopper"),
+        "",
+    );
+    Json(json!({
+        "ok": true,
+        "status": "refunded",
+        "amount_pula": amount,
+        "return": return_joined(&conn, id)
+    }))
+}
+
+/* ------------------------------------------------------------------ *
  * Seller console
  * ------------------------------------------------------------------ */
 
@@ -1296,11 +1760,15 @@ async fn seller_console(State(state): S, Path(slug): Path<String>) -> Json<Value
         args(&[&id as &dyn ToSql]),
     );
 
+    let returns = returns_list(&conn, "WHERE r.store_id = ?1", args(&[&id as &dyn ToSql]));
+
     let gmv = revenue.as_ref().and_then(|r| r.get("gmv")).and_then(|v| v.as_f64()).unwrap_or(0.0);
     Json(json!({
         "store": store,
         "products": decorated,
         "orders": orders,
+        "returns": returns,
+        "openReturns": returns_open(&returns),
         "revenue": {
             "gmv": round2(gmv),
             "orders": revenue.as_ref().and_then(|r| r.get("orders")).and_then(|v| v.as_i64()).unwrap_or(0),

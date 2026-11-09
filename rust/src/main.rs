@@ -26,12 +26,28 @@ use serde_json::json;
 
 use api::AppState;
 
+/// Where the mall keeps its state — one SQLite file.
+fn database_path() -> String {
+    std::env::var("MORUA_DB").unwrap_or_else(|_| "data/morua.db".to_string())
+}
+
+/// Create the directory the database lives in if it is not there yet, so
+/// a fresh checkout, a fresh container or a fresh volume just works.
+fn ensure_parent(path: &str) {
+    if let Some(parent) = std::path::Path::new(path).parent() {
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // `morua --health` is a liveness probe for container platforms: it opens
     // the database and reports the state without starting a listener.
     if std::env::args().any(|a| a == "--health") {
-        let db_path = std::env::var("MORUA_DB").unwrap_or_else(|_| "data/morua.db".to_string());
+        let db_path = database_path();
+        ensure_parent(&db_path);
         match Connection::open(&db_path) {
             Ok(conn) => {
                 let count: i64 = conn
@@ -47,12 +63,8 @@ async fn main() {
         return;
     }
 
-    let db_path = std::env::var("MORUA_DB").unwrap_or_else(|_| "data/morua.db".to_string());
-    if let Some(parent) = std::path::Path::new(&db_path).parent() {
-        if !parent.as_os_str().is_empty() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-    }
+    let db_path = database_path();
+    ensure_parent(&db_path);
     let conn = Connection::open(&db_path).expect("open database");
     schema::migrate(&conn);
     seed::seed(&conn);

@@ -576,6 +576,77 @@ async function main() {
   const sum = ledger.balances.reduce((n, b) => n + b.balance, 0)
   record('ledger: debits equal credits', Math.abs(sum) < 0.01, `balance ${sum.toFixed(2)}`)
 
+  /* ---- sending something back ---- */
+  const sentBack = await post(`/api/orders/${placed.data.code}/returns`, {
+    itemId: order.items[0].id,
+    qty: 1,
+    reason: 'Arrived damaged',
+  })
+  record(
+    'a shopper can send an item back to the shop',
+    sentBack.data.ok === true && Boolean(sentBack.data.return?.id),
+    sentBack.data.return?.id,
+  )
+  const returnId = sentBack.data.return?.id
+  record(
+    'the return carries the price the shopper paid',
+    Math.abs((sentBack.data.return?.amount_pula ?? 0) - order.items[0].unit_price_pula) < 0.01,
+    `P${sentBack.data.return?.amount_pula}`,
+  )
+  const orderReturns = await get(`/api/orders/${placed.data.code}/returns`)
+  checkShape('GET /api/orders/:code/returns', orderReturns, { returns: 'array' })
+  record(
+    'the shopper can see the return they asked for',
+    orderReturns.returns.some((r) => r.id === returnId && r.status === 'requested'),
+  )
+
+  const shopReturns = await get(`/api/seller/${first.slug}/returns`)
+  checkShape('GET /api/seller/:slug/returns', shopReturns, { returns: 'array' })
+  record(
+    'the shop is told about the send-back',
+    shopReturns.returns.some((r) => r.id === returnId),
+    `${shopReturns.returns.length} in the shop's inbox`,
+  )
+
+  const tooEarly = await post(`/api/orders/${placed.data.code}/returns`, {
+    itemId: order.items[0].id,
+    qty: 1,
+  })
+  record(
+    'the same item cannot be sent back twice',
+    tooEarly.data.ok !== true,
+    tooEarly.data.error,
+  )
+
+  const tooSoon = await post(`/api/admin/returns/${returnId}/refund`, {})
+  record(
+    'the mall will not refund a return the shop has not accepted',
+    tooSoon.data.ok !== true,
+    tooSoon.data.error,
+  )
+
+  const accepted = await post(`/api/seller/${first.slug}/returns/${returnId}/accept`, {})
+  record('the shop can take it back', accepted.data.status === 'accepted', accepted.data.status)
+
+  const refunded = await post(`/api/admin/returns/${returnId}/refund`, {})
+  record(
+    'the mall refunds the shopper',
+    refunded.data.ok === true && refunded.data.amount_pula > 0,
+    `P${refunded.data.amount_pula}`,
+  )
+
+  const ledgerAfter = await get('/api/ledger')
+  const sumAfter = ledgerAfter.balances.reduce((n, b) => n + b.balance, 0)
+  record(
+    'the books still balance after a refund',
+    Math.abs(sumAfter) < 0.01,
+    `balance ${sumAfter.toFixed(2)}`,
+  )
+  record(
+    'the refund is written into the ledger',
+    ledgerAfter.entries.some((e) => e.kind === 'refund'),
+  )
+
   /* ---- the seller console ---- */
   const seller = await get(`/api/seller/${first.slug}`)
   checkShape('GET /api/seller/:slug', seller, SELLER)

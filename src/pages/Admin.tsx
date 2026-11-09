@@ -5,12 +5,46 @@ import type { AdminData, Provider, Store } from '../lib/api'
 import { Badge, Empty, SectionHead, Spinner, Stat } from '../components/bits'
 import { dateTime, pula, pulaShort } from '../lib/format'
 
-type Tab = 'queue' | 'markup' | 'dispatch' | 'prices' | 'ledger' | 'audit'
+type Tab = 'queue' | 'markup' | 'dispatch' | 'returns' | 'prices' | 'ledger' | 'audit'
+
+/**
+ * Keeper's Ledger, in plain words. The book is double-entry, so an
+ * account can sit on either side of it — but the mall admin should not
+ * have to know which side that is to read their own books.
+ */
+const LEDGER_ACCOUNTS: Record<string, { label: string; hint: string; asset: boolean }> = {
+  platform_cash: {
+    label: 'Cash in hand',
+    hint: 'Collected from shoppers and not paid out yet',
+    asset: true,
+  },
+  escrow_held: {
+    label: 'Held for shoppers',
+    hint: 'Paid out when an order is delivered',
+    asset: false,
+  },
+  revenue: {
+    label: 'Earned by the mall',
+    hint: 'Commission, the junction levy and service fees',
+    asset: false,
+  },
+  delivery_costs: {
+    label: 'Owed to the riders',
+    hint: 'What the delivery providers are paid',
+    asset: false,
+  },
+  seller_payable: {
+    label: 'Owed to the shops',
+    hint: 'What the shops have earned and not been paid',
+    asset: false,
+  },
+}
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'queue', label: 'Approval queue' },
   { key: 'markup', label: 'Price markup' },
   { key: 'dispatch', label: 'Dispatch desk' },
+  { key: 'returns', label: 'Returns desk' },
   { key: 'prices', label: 'Price watch' },
   { key: 'ledger', label: 'Keeper’s Ledger' },
   { key: 'audit', label: 'Audit trail' },
@@ -19,6 +53,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function Admin() {
   const [data, setData] = useState<AdminData | null>(null)
   const [orders, setOrders] = useState<any[]>([])
+  const [returns, setReturns] = useState<any[]>([])
   const [tab, setTab] = useState<Tab>('queue')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -32,6 +67,12 @@ export default function Admin() {
         setOrders((d as any).orders ?? [])
       })
       .catch((e) => setError(e.message))
+    api
+      .get('/admin/returns')
+      .then((r: any) => setReturns(r.returns ?? []))
+      .catch(() => {
+        /* the console still works without the returns queue */
+      })
   }, [])
 
   useEffect(load, [load])
@@ -299,6 +340,91 @@ export default function Admin() {
         </div>
       )}
 
+      {tab === 'returns' && (
+        <div className="stack gap">
+          <SectionHead
+            eyebrow="Escrow & Return-to-Shop™"
+            title="The money goes back"
+            lede="A shopper sends an item back to the shop that sold it. The shop accepts it, and the mall settles the refund: the shopper gets their money, the shop's share goes back with the item, and the junction's levy is returned. The delivery is not — the rider already came."
+          />
+          {returns.length === 0 ? (
+            <Empty glyph="📦" title="Nothing to settle" body="No shopper has asked to send anything back." />
+          ) : (
+            <div className="panel">
+              <div className="panel-head">
+                <span className="strong">Returns</span>
+                <Badge tone={returns.filter((r) => r.status === 'accepted').length ? 'gold' : 'green'}>
+                  {returns.filter((r) => r.status === 'accepted').length} waiting on a refund
+                </Badge>
+              </div>
+              <div className="panel-body" style={{ overflowX: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Shop</th>
+                      <th>Order</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Settle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returns.map((r) => (
+                      <tr key={r.id}>
+                        <td className="small">
+                          {r.qty} × {r.product}
+                          <br />
+                          <span className="tiny muted">{r.reason}</span>
+                        </td>
+                        <td className="small">{r.shop}</td>
+                        <td className="mono small">{r.order_code}</td>
+                        <td className="strong">{pula(r.amount_pula)}</td>
+                        <td>
+                          <Badge
+                            tone={
+                              r.status === 'refunded'
+                                ? 'green'
+                                : r.status === 'declined'
+                                  ? 'red'
+                                  : r.status === 'accepted'
+                                    ? 'gold'
+                                    : 'blue'
+                            }
+                          >
+                            {r.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          {r.status === 'accepted' && (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={busy === `refund-${r.id}`}
+                              onClick={() =>
+                                act(
+                                  `refund-${r.id}`,
+                                  () => api.post(`/admin/returns/${r.id}/refund`, {}),
+                                  `${pula(r.amount_pula)} refunded to the shopper`,
+                                )
+                              }
+                            >
+                              Refund
+                            </button>
+                          )}
+                          {r.status === 'requested' && (
+                            <span className="tiny muted">Waiting on the shop</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'prices' && (
         <div className="stack gap">
           <SectionHead
@@ -359,18 +485,25 @@ export default function Admin() {
             lede="A double-entry ledger: every order posts a balanced set of lines, so the platform can always show what it holds, what it owes sellers and what it has earned."
           />
           <div className="grid grid-3">
-            {data.balances.map((b) => (
-              <div key={b.account} className="card">
-                <div className="tiny muted">{b.account.replace(/_/g, ' ')}</div>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>
-                  {pula(Math.abs(b.balance))}
+            {data.balances.map((b) => {
+              const account = LEDGER_ACCOUNTS[b.account] ?? {
+                label: b.account.replace(/_/g, ' '),
+                hint: 'Money on this account',
+                asset: false,
+              }
+              // An asset sits on the debit side, everything else on the
+              // credit side. The admin reads the number, not the side.
+              const amount = account.asset ? b.balance : -b.balance
+              return (
+                <div key={b.account} className="card">
+                  <div className="tiny muted">{account.label}</div>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: '1.6rem' }}>
+                    {pula(amount)}
+                  </div>
+                  <div className="tiny muted">{account.hint}</div>
                 </div>
-                <div className="tiny muted">
-                  {b.balance >= 0 ? 'Debit balance' : 'Credit balance'} · Dr {pulaShort(b.debit)} · Cr{' '}
-                  {pulaShort(b.credit)}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="panel">
             <div className="panel-head">

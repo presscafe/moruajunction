@@ -149,6 +149,19 @@ function SellerConsole({ slug }: { slug: string }) {
     load()
   }
 
+  async function answerReturn(id: number, accept: boolean) {
+    setBusy(`return-${id}`)
+    try {
+      await api.post(`/seller/${slug}/returns/${id}/${accept ? 'accept' : 'decline'}`, {})
+      load()
+      say(accept ? 'You will take it back — the mall refunds the shopper' : 'You turned the return down')
+    } catch (e: any) {
+      say(e.message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div className="wrap section">
       {flash && <div className="toast">{flash}</div>}
@@ -248,6 +261,73 @@ function SellerConsole({ slug }: { slug: string }) {
                   <span className="tiny muted">{n.body}</span>
                 </span>
                 <span className="tiny muted nowrap">{dateTime(n.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(data.returns?.length ?? 0) > 0 && (
+        <div className="panel" style={{ marginTop: '1.6rem' }}>
+          <div className="panel-head">
+            <span className="strong">Send-backs</span>
+            {data.openReturns > 0 && <Badge tone="gold">{data.openReturns} open</Badge>}
+          </div>
+          <div className="panel-body">
+            <p className="tiny muted" style={{ marginBottom: '0.7rem' }}>
+              Escrow &amp; Return-to-Shop&trade;: take the item back from the shopper, then the mall
+              refunds them and takes your share of it off your payout.
+            </p>
+            {data.returns.map((r: any) => (
+              <div
+                key={r.id}
+                className="row gap wrapflex"
+                style={{
+                  padding: '0.6rem 0',
+                  borderBottom: '1px solid var(--line)',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '1.3rem' }}>{r.icon ?? '📦'}</span>
+                <span className="grow">
+                  <span className="small strong" style={{ display: 'block' }}>
+                    {r.qty} × {r.product} — {pula(r.amount_pula)}
+                  </span>
+                  <span className="tiny muted">
+                    Order {r.order_code} · {r.reason} · {dateTime(r.created_at)}
+                  </span>
+                </span>
+                <Badge
+                  tone={
+                    r.status === 'refunded'
+                      ? 'green'
+                      : r.status === 'declined'
+                        ? 'red'
+                        : r.status === 'accepted'
+                          ? 'blue'
+                          : 'gold'
+                  }
+                >
+                  {r.status}
+                </Badge>
+                {r.status === 'requested' && (
+                  <span className="row gap-s">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => answerReturn(r.id, true)}
+                      disabled={busy === `return-${r.id}`}
+                    >
+                      Take it back
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => answerReturn(r.id, false)}
+                      disabled={busy === `return-${r.id}`}
+                    >
+                      Decline
+                    </button>
+                  </span>
+                )}
               </div>
             ))}
           </div>
